@@ -5,62 +5,104 @@
 The UDC Enterprise Platform is a modular monorepo consisting of **6 integrated subsystems** designed for enterprise retail data management. It targets organizations running 57–100 stores with PostgreSQL-based WMS, SAP S/4HANA ERP, and Microsoft Fabric Lakehouse.
 
 ```mermaid
-C4Context
-    title System Context — UDC Enterprise Platform
+graph TB
+    subgraph Users["👤 Users"]
+        BA["🧑‍💼 Business Analyst<br/><small>Dashboards & data exploration</small>"]
+        DE["🧑‍💻 Data Engineer<br/><small>Pipelines & lineage</small>"]
+        DS["🛡️ Data Steward<br/><small>Governance & quality</small>"]
+    end
 
-    Person(analyst, "Business Analyst", "Requests dashboards, queries catalog")
-    Person(engineer, "Data Engineer", "Documents pipelines, tracks lineage")
-    Person(steward, "Data Steward", "Manages governance, glossary, quality")
+    subgraph UDC["UDC Enterprise Platform"]
+        Portal["🌐 UDC Portal<br/><small>React SPA</small>"]
+        Orch["⚡ Orchestrator<br/><small>Copilot SDK Gateway</small>"]
 
-    System_Boundary(udc, "UDC Enterprise Platform") {
-        System(orchestrator, "UDC Orchestrator", "Copilot-powered workflow engine")
-    }
+        subgraph Core["AI & Data Services"]
+            Classifier["🤖 Classifier<br/><small>.NET Semantic Kernel</small>"]
+            Meta["📂 MetaCatalog<br/><small>Metadata & Lineage</small>"]
+            Context["🧠 ContextVault<br/><small>Memory & Vectors</small>"]
+            Policy["🛡️ PolicyGuard<br/><small>Governance & Audit</small>"]
+        end
 
-    System_Ext(wms, "PostgreSQL WMS", "57-100 store databases")
-    System_Ext(sap, "SAP S/4HANA", "ERP OData API")
-    System_Ext(fabric, "Microsoft Fabric", "Lakehouse / OneLake")
-    System_Ext(azure, "Azure OpenAI", "GPT-4o / Embeddings")
-    System_Ext(powerbi, "Power BI REST API", "Dashboard rendering")
+        subgraph Desktop["Desktop Automation"]
+            Vision["👁️ VisionLens<br/><small>Screen Parsing</small>"]
+            Agent["🖥️ DesktopAgent<br/><small>Automation</small>"]
+        end
+    end
 
-    Rel(analyst, orchestrator, "Natural language requests")
-    Rel(engineer, orchestrator, "Pipeline documentation")
-    Rel(steward, orchestrator, "Policy & glossary management")
-    Rel(orchestrator, wms, "SQL queries")
-    Rel(orchestrator, sap, "OData calls")
-    Rel(orchestrator, fabric, "OneLake REST")
-    Rel(orchestrator, azure, "LLM inference")
-    Rel(orchestrator, powerbi, "Dashboard creation")
+    subgraph External["External Systems"]
+        PG[("🐘 PostgreSQL WMS<br/><small>57-100 stores</small>")]
+        SAP["📦 SAP S/4HANA<br/><small>ERP — OData</small>"]
+        Fabric["🔷 MS Fabric<br/><small>Lakehouse</small>"]
+        AOAI["🧠 Azure OpenAI<br/><small>GPT-4o</small>"]
+        PBI["📊 Power BI<br/><small>Dashboards</small>"]
+    end
+
+    BA & DE & DS --> Portal
+    Portal -->|REST / WS| Orch
+    Orch -->|gRPC| Classifier
+    Orch -->|gRPC| Meta
+    Orch -->|gRPC| Context
+    Orch -->|gRPC| Policy
+    Agent -->|gRPC| Vision
+    Meta -->|SQL| PG
+    Classifier -->|OData| SAP
+    Classifier -->|REST| Fabric
+    Classifier -->|HTTPS| AOAI
+    Classifier -->|REST| PBI
+
+    style UDC fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    style Core fill:#1e40af,stroke:#60a5fa,color:#fff
+    style Desktop fill:#1e40af,stroke:#60a5fa,color:#fff
+    style Users fill:#f0f9ff,stroke:#3b82f6,color:#1e3a5f
+    style External fill:#fefce8,stroke:#ca8a04,color:#713f12
 ```
 
 ## Container Diagram
 
 ```mermaid
-C4Container
-    title Container Diagram — UDC Enterprise Platform
+graph LR
+    subgraph Frontend
+        Portal["🌐 React Portal<br/><small>TypeScript + Vite + TailwindCSS</small>"]
+    end
 
-    Container(portal, "UDC Portal", "React 18 / TypeScript", "Web interface for all users")
-    Container(orchestrator, "UDC Orchestrator", "Python / FastAPI", "Copilot bridge + workflow engine")
-    Container(classifier, "UDC Classifier", ".NET 8 / Semantic Kernel", "AI data classification agents")
-    Container(metacatalog, "UDC MetaCatalog", "Python / FastAPI", "Metadata, lineage, glossary, quality")
-    Container(contextvault, "UDC ContextVault", "Python / FastAPI", "3-layer context management")
-    Container(visionlens, "UDC VisionLens", "Python / FastAPI", "Screen parsing + OCR + captioning")
-    Container(desktopagent, "UDC DesktopAgent", "Python / FastAPI", "Desktop automation via VNC")
-    Container(policyguard, "UDC PolicyGuard", "Python / FastAPI", "Governance, trust scoring, audit")
+    subgraph Gateway
+        Nginx["Nginx<br/><small>Reverse Proxy</small>"]
+        Orch["Orchestrator<br/><small>FastAPI + Copilot SDK</small>"]
+    end
 
-    ContainerDb(postgres, "PostgreSQL 16", "Primary database")
-    ContainerDb(redis, "Redis 7", "Cache + Pub/Sub")
-    ContainerDb(chromadb, "ChromaDB", "Vector store")
+    subgraph Services["Backend Services"]
+        Classifier[".NET Classifier<br/><small>Semantic Kernel</small>"]
+        Meta["MetaCatalog<br/><small>FastAPI + SQLAlchemy</small>"]
+        Context["ContextVault<br/><small>FastAPI + ChromaDB</small>"]
+        Policy["PolicyGuard<br/><small>FastAPI</small>"]
+        Vision["VisionLens<br/><small>FastAPI + YOLO</small>"]
+        Desktop["DesktopAgent<br/><small>FastAPI + VNC</small>"]
+    end
 
-    Rel(portal, orchestrator, "REST / SSE", "/api/chat, /api/workflow")
-    Rel(orchestrator, classifier, "gRPC", "Classification requests")
-    Rel(orchestrator, metacatalog, "gRPC", "Metadata operations")
-    Rel(orchestrator, contextvault, "gRPC", "Context retrieval")
-    Rel(orchestrator, visionlens, "gRPC", "Screen analysis")
-    Rel(orchestrator, desktopagent, "gRPC + WebSocket", "Desktop actions")
-    Rel(orchestrator, policyguard, "gRPC", "Policy evaluation")
-    Rel(metacatalog, postgres, "asyncpg")
-    Rel(contextvault, chromadb, "HTTP")
-    Rel(policyguard, postgres, "asyncpg")
+    subgraph Data["Data Stores"]
+        PG[("PostgreSQL 16")]
+        Redis[("Redis 7")]
+        Chroma[("ChromaDB")]
+    end
+
+    Portal -->|HTTPS| Nginx
+    Nginx --> Orch
+    Orch -->|":50051"| Classifier
+    Orch -->|":50052"| Meta
+    Orch -->|":50053"| Context
+    Orch -->|":50054"| Policy
+    Desktop -->|":50055"| Vision
+    Meta --> PG
+    Context --> PG
+    Context --> Chroma
+    Policy --> PG
+    Orch --> Redis
+    Meta --> Redis
+
+    style Frontend fill:#0ea5e9,stroke:#0284c7,color:#fff
+    style Gateway fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style Services fill:#1e40af,stroke:#3b82f6,color:#fff
+    style Data fill:#059669,stroke:#047857,color:#fff
 ```
 
 ## Subsystem Descriptions

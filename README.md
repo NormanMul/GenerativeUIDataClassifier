@@ -69,46 +69,107 @@ All charts are interactive (hover for tooltips, click for details).
 
 ## Architecture
 
+### System Context
+
 ```mermaid
-C4Context
-    title UDC Enterprise Platform — System Context
+graph TB
+    subgraph Users["👤 Users"]
+        BA["🧑‍💼 Business Analyst<br/><small>Dashboards & data exploration</small>"]
+        DE["🧑‍💻 Data Engineer<br/><small>Pipelines & lineage</small>"]
+        DS["🛡️ Data Steward<br/><small>Governance & quality</small>"]
+    end
 
-    Person(analyst, "Business Analyst", "Requests dashboards, explores data")
-    Person(engineer, "Data Engineer", "Builds pipelines, manages lineage")
-    Person(steward, "Data Steward", "Enforces governance, reviews quality")
+    subgraph UDC["UDC Enterprise Platform"]
+        Portal["🌐 UDC Portal<br/><small>React SPA</small>"]
+        Orch["⚡ Orchestrator<br/><small>Copilot SDK Gateway</small>"]
 
-    System_Boundary(udc, "UDC Enterprise Platform") {
-        System(portal, "UDC Portal", "React SPA — adaptive UI per role")
-        System(orchestrator, "UDC Orchestrator", "Copilot SDK gateway + workflow engine")
-        System(classifier, "UDC Classifier", ".NET Semantic Kernel — AI orchestrator")
-        System(metacatalog, "UDC MetaCatalog", "Metadata catalog, lineage, quality")
-        System(contextvault, "UDC ContextVault", "Tiered context memory for agents")
-        System(visionlens, "UDC VisionLens", "Screen parsing + UI detection")
-        System(desktopagent, "UDC DesktopAgent", "Desktop automation agent")
-        System(policyguard, "UDC PolicyGuard", "Governance, policy, audit")
-    }
+        subgraph Core["AI & Data Services"]
+            Classifier["🤖 Classifier<br/><small>.NET Semantic Kernel</small>"]
+            Meta["📂 MetaCatalog<br/><small>Metadata & Lineage</small>"]
+            Context["🧠 ContextVault<br/><small>Memory & Vectors</small>"]
+            Policy["🛡️ PolicyGuard<br/><small>Governance & Audit</small>"]
+        end
 
-    System_Ext(postgres, "PostgreSQL WMS", "57-100 store databases")
-    System_Ext(sap, "SAP S/4HANA", "ERP system — OData API")
-    System_Ext(fabric, "Microsoft Fabric", "Lakehouse + OneLake")
-    System_Ext(aoai, "Azure OpenAI", "GPT-4o, embeddings")
-    System_Ext(powerbi, "Power BI Service", "Dashboard hosting + embed")
+        subgraph Desktop["Desktop Automation"]
+            Vision["👁️ VisionLens<br/><small>Screen Parsing</small>"]
+            Agent["🖥️ DesktopAgent<br/><small>Automation</small>"]
+        end
+    end
 
-    Rel(analyst, portal, "Uses")
-    Rel(engineer, portal, "Uses")
-    Rel(steward, portal, "Uses")
-    Rel(portal, orchestrator, "REST/WebSocket")
-    Rel(orchestrator, classifier, "gRPC")
-    Rel(orchestrator, metacatalog, "gRPC")
-    Rel(orchestrator, contextvault, "gRPC")
-    Rel(orchestrator, policyguard, "gRPC")
-    Rel(classifier, metacatalog, "gRPC")
-    Rel(desktopagent, visionlens, "gRPC")
-    Rel(metacatalog, postgres, "SQL")
-    Rel(classifier, sap, "OData")
-    Rel(classifier, fabric, "REST")
-    Rel(classifier, aoai, "HTTPS")
-    Rel(classifier, powerbi, "REST API")
+    subgraph External["External Systems"]
+        PG[("🐘 PostgreSQL WMS<br/><small>57-100 stores</small>")]
+        SAP["📦 SAP S/4HANA<br/><small>ERP — OData</small>"]
+        Fabric["🔷 MS Fabric<br/><small>Lakehouse</small>"]
+        AOAI["🧠 Azure OpenAI<br/><small>GPT-4o</small>"]
+        PBI["📊 Power BI<br/><small>Dashboards</small>"]
+    end
+
+    BA & DE & DS --> Portal
+    Portal -->|REST / WS| Orch
+    Orch -->|gRPC| Classifier
+    Orch -->|gRPC| Meta
+    Orch -->|gRPC| Context
+    Orch -->|gRPC| Policy
+    Agent -->|gRPC| Vision
+    Meta -->|SQL| PG
+    Classifier -->|OData| SAP
+    Classifier -->|REST| Fabric
+    Classifier -->|HTTPS| AOAI
+    Classifier -->|REST| PBI
+
+    style UDC fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    style Core fill:#1e40af,stroke:#60a5fa,color:#fff
+    style Desktop fill:#1e40af,stroke:#60a5fa,color:#fff
+    style Users fill:#f0f9ff,stroke:#3b82f6,color:#1e3a5f
+    style External fill:#fefce8,stroke:#ca8a04,color:#713f12
+```
+
+### Container Diagram
+
+```mermaid
+graph LR
+    subgraph Frontend
+        Portal["🌐 React Portal<br/><small>TypeScript + Vite + TailwindCSS</small>"]
+    end
+
+    subgraph Gateway
+        Nginx["Nginx<br/><small>Reverse Proxy</small>"]
+        Orch["Orchestrator<br/><small>FastAPI + Copilot SDK</small>"]
+    end
+
+    subgraph Services["Backend Services"]
+        Classifier[".NET Classifier<br/><small>Semantic Kernel</small>"]
+        Meta["MetaCatalog<br/><small>FastAPI + SQLAlchemy</small>"]
+        Context["ContextVault<br/><small>FastAPI + ChromaDB</small>"]
+        Policy["PolicyGuard<br/><small>FastAPI</small>"]
+        Vision["VisionLens<br/><small>FastAPI + YOLO</small>"]
+        Desktop["DesktopAgent<br/><small>FastAPI + VNC</small>"]
+    end
+
+    subgraph Data["Data Stores"]
+        PG[("PostgreSQL 16")]
+        Redis[("Redis 7")]
+        Chroma[("ChromaDB")]
+    end
+
+    Portal -->|HTTPS| Nginx
+    Nginx --> Orch
+    Orch -->|":50051"| Classifier
+    Orch -->|":50052"| Meta
+    Orch -->|":50053"| Context
+    Orch -->|":50054"| Policy
+    Desktop -->|":50055"| Vision
+    Meta --> PG
+    Context --> PG
+    Context --> Chroma
+    Policy --> PG
+    Orch --> Redis
+    Meta --> Redis
+
+    style Frontend fill:#0ea5e9,stroke:#0284c7,color:#fff
+    style Gateway fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style Services fill:#1e40af,stroke:#3b82f6,color:#fff
+    style Data fill:#059669,stroke:#047857,color:#fff
 ```
 
 ### Subsystems
