@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://udc.enterprise/schemas/data_asset.json",
+  "title": "DataAsset",
+  "description": "Schema for registering a data asset in UDC MetaCatalog",
+  "type": "object",
+  "required": ["name", "source_type", "qualified_name"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier (auto-generated if not provided)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Human-readable asset name"
+    },
+    "qualified_name": {
+      "type": "string",
+      "description": "Fully qualified name (e.g., store01.public.orders)"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["postgres", "sap", "fabric"],
+      "description": "Data source type"
+    },
+    "source_instance": {
+      "type": "string",
+      "description": "Source instance identifier (e.g., store ID)"
+    },
+    "database_name": {
+      "type": "string"
+    },
+    "schema_name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "columns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/column"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 100
+      }
+    },
+    "quality_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Overall quality score (0-100)"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "column": {
+      "type": "object",
+      "required": ["name", "data_type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data_type": {
+          "type": "string",
+          "description": "SQL or inferred data type"
+        },
+        "description": {
+          "type": "string"
+        },
+        "is_nullable": {
+          "type": "boolean",
+          "default": true
+        },
+        "is_primary_key": {
+          "type": "boolean",
+          "default": false
+        },
+        "is_foreign_key": {
+          "type": "boolean",
+          "default": false
+        },
+        "foreign_key_ref": {
+          "type": "string",
+          "description": "target_table.target_column"
+        },
+        "null_percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "unique_percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "is_pii": {
+          "type": "boolean",
+          "default": false
+        },
+        "pii_type": {
+          "type": "string",
+          "enum": ["none", "ssn", "email", "phone", "credit_card", "address", "name", "ip_address"]
+        },
+        "classification": {
+          "type": "string",
+          "enum": ["dimension", "measure", "key", "date", "pii", "identifier", "flag", "text"]
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sample_values": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 10
+        },
+        "glossary_terms": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

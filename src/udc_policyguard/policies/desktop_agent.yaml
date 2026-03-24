@@ -1,0 +1,42 @@
+# UDC PolicyGuard — Desktop agent specific policies
+
+policies:
+  - name: desktop-no-delete
+    description: Desktop agents are forbidden from performing delete operations
+    rule_type: action_allowlist
+    enabled: true
+    rules:
+      agent_type: desktop
+      denied_actions:
+        - delete
+        - drop
+        - truncate
+        - purge
+      reason: Desktop agents are not permitted to perform destructive operations
+
+  - name: desktop-no-production-write
+    description: Desktop agents cannot write to production environments
+    rule_type: environment_restriction
+    enabled: true
+    rules:
+      agent_type: desktop
+      denied_environments:
+        - production
+        - prod
+      denied_actions:
+        - write
+        - update
+        - insert
+        - create
+      reason: Desktop agents are restricted from modifying production data
+
+  - name: desktop-screen-recording
+    description: Screen recording is required for desktop agent sessions
+    rule_type: audit_requirement
+    enabled: true
+    rules:
+      agent_type: desktop
+      require_screen_recording: true
+      recording_format: mp4
+      retain_days: 30
+      reason: All desktop agent sessions must be recorded for compliance

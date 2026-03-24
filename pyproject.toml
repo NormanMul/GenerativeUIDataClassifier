@@ -1,0 +1,50 @@
+[project]
+name = "udc-enterprise-platform"
+version = "0.1.0"
+description = "Universal Data Classifier — Enterprise data management platform"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+[tool.uv.workspace]
+members = [
+    "src/udc_metacatalog",
+    "src/udc_contextvault",
+    "src/udc_visionlens",
+    "src/udc_desktopagent",
+    "src/udc_policyguard",
+    "src/udc_orchestrator",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A", "C4", "DTZ", "T20", "ICN", "PIE", "PT", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA"]
+ignore = ["S101", "S104"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["udc_metacatalog", "udc_contextvault", "udc_visionlens", "udc_desktopagent", "udc_policyguard", "udc_orchestrator"]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["src"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-ra -q --strict-markers"
+markers = [
+    "integration: marks tests as integration tests",
+    "slow: marks tests as slow",
+]

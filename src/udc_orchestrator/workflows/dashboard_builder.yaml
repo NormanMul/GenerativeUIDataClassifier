@@ -1,0 +1,142 @@
+# UDC Orchestrator — Dashboard Builder Workflow (Use Case 4)
+# AI-assisted dashboard generation from natural language requests.
+
+name: dashboard_builder
+description: >
+  End-to-end dashboard creation workflow. Parses a natural language request,
+  resolves backing data sources, checks cached context, validates access
+  policies, verifies data quality, generates a dashboard specification,
+  renders to Power BI and HTML, and stores the experience for future reuse.
+version: "1.0.0"
+
+metadata:
+  use_case: "UC-4: AI-Assisted Dashboard Generation"
+  owner: business_intelligence
+  tags:
+    - dashboard
+    - visualization
+    - power_bi
+    - self_service
+
+steps:
+  - name: parse_request
+    tool: store_context
+    description: Parse NL dashboard request into structured intent (metrics, dimensions, filters)
+    config:
+      extraction_mode: intent
+      entity_types:
+        - metric
+        - dimension
+        - filter
+        - time_range
+      confidence_threshold: 0.8
+    depends_on: []
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: resolve_data
+    tool: search_metadata
+    description: Resolve requested metrics and dimensions to concrete data assets and columns
+    config:
+      match_strategy: semantic
+      include_alternatives: true
+      max_candidates: 5
+    depends_on:
+      - parse_request
+    retry_max: 3
+    retry_backoff: 1.5
+
+  - name: check_context
+    tool: store_context
+    description: Check ContextVault for cached dashboard patterns and user preferences
+    config:
+      lookup_types:
+        - dashboard_template
+        - user_preference
+        - similar_request
+      similarity_threshold: 0.75
+    depends_on:
+      - parse_request
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: validate_access
+    tool: check_policy
+    description: Validate user access permissions for all resolved data assets
+    config:
+      check_types:
+        - row_level_security
+        - column_masking
+        - dataset_access
+      fail_on_partial: false
+    depends_on:
+      - resolve_data
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: verify_quality
+    tool: search_metadata
+    description: Verify data quality scores meet minimum thresholds for dashboard rendering
+    config:
+      minimum_quality_score: 0.8
+      check_freshness: true
+      max_staleness_hours: 24
+    depends_on:
+      - resolve_data
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: generate_spec
+    tool: store_context
+    description: Generate dashboard specification (layout, charts, data bindings)
+    config:
+      spec_format: dashboard_json
+      include_responsive_layout: true
+      chart_recommendations: true
+      apply_brand_theme: true
+    depends_on:
+      - validate_access
+      - verify_quality
+      - check_context
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: render_powerbi
+    tool: execute_desktop
+    description: Render dashboard to Power BI format via desktop automation
+    config:
+      output_format: pbix
+      embed_data: false
+      apply_rls: true
+    depends_on:
+      - generate_spec
+    retry_max: 3
+    retry_backoff: 2.0
+    on_failure: render_html
+
+  - name: render_html
+    tool: store_context
+    description: Render dashboard as interactive HTML (fallback or additional output)
+    config:
+      output_format: html
+      chart_library: plotly
+      interactive: true
+      responsive: true
+    depends_on:
+      - generate_spec
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: store_experience
+    tool: store_context
+    description: Store the dashboard creation experience for future context enrichment
+    config:
+      store_template: true
+      store_mappings: true
+      store_user_feedback: true
+      index_for_similarity: true
+    depends_on:
+      - render_powerbi
+      - render_html
+    retry_max: 2
+    retry_backoff: 1.0

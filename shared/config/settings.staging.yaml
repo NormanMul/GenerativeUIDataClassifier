@@ -1,0 +1,11 @@
+# =============================================================================
+# UDC Enterprise Platform — Staging Configuration
+# =============================================================================
+
+_extends: settings.base.yaml
+
+logging:
+  level: "INFO"
+
+features:
+  enable_desktop_agent: false

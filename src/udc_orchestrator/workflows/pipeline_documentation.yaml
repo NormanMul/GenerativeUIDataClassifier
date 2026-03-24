@@ -1,0 +1,157 @@
+# UDC Orchestrator — Pipeline Documentation Workflow (Use Case 2)
+# Automated data pipeline discovery, profiling, classification, and documentation.
+
+name: pipeline_documentation
+description: >
+  End-to-end pipeline documentation workflow. Discovers data sources,
+  profiles columns, infers lineage, classifies sensitivity, generates
+  glossary terms, runs quality gates, and produces comprehensive documentation.
+version: "1.0.0"
+
+metadata:
+  use_case: "UC-2: Automated Pipeline Documentation"
+  owner: data_engineering
+  tags:
+    - documentation
+    - lineage
+    - classification
+    - quality
+
+steps:
+  - name: discover_sources
+    tool: search_metadata
+    description: Discover and catalog all data sources in the target pipeline
+    config:
+      scope: pipeline
+      include_schemas: true
+      include_sample_data: true
+    depends_on: []
+    retry_max: 3
+    retry_backoff: 1.0
+
+  - name: profile_data
+    tool: search_metadata
+    description: Profile each discovered data source with statistical summaries
+    config:
+      profiling_depth: full
+      include_distributions: true
+      null_analysis: true
+      uniqueness_check: true
+    depends_on:
+      - discover_sources
+    retry_max: 3
+    retry_backoff: 2.0
+
+  - name: infer_lineage
+    tool: search_metadata
+    description: Trace data flow and build lineage graph across pipeline stages
+    config:
+      lineage_depth: 5
+      include_transformations: true
+      format: dag
+    depends_on:
+      - discover_sources
+    retry_max: 3
+    retry_backoff: 2.0
+
+  - name: classify_columns
+    tool: classify_data
+    description: Classify all columns for PII, sensitivity, and domain tags
+    config:
+      classification_types:
+        - pii
+        - sensitivity
+        - domain
+      confidence_threshold: 0.85
+      use_context: true
+    depends_on:
+      - profile_data
+    retry_max: 3
+    retry_backoff: 1.5
+
+  - name: generate_glossary
+    tool: store_context
+    description: Auto-generate business glossary terms from classified metadata
+    config:
+      source: classification_results
+      include_descriptions: true
+      link_to_assets: true
+      language: en
+    depends_on:
+      - classify_columns
+      - infer_lineage
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: run_quality_gate
+    tool: search_metadata
+    description: Run data quality validation rules against profiled data
+    config:
+      rules:
+        - completeness
+        - consistency
+        - uniqueness
+        - timeliness
+      fail_threshold: 0.7
+      warn_threshold: 0.85
+    depends_on:
+      - profile_data
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: store_documentation
+    tool: store_context
+    description: Persist all generated documentation to ContextVault
+    config:
+      format: markdown
+      include_diagrams: true
+      include_lineage_svg: true
+      versioned: true
+    depends_on:
+      - generate_glossary
+      - run_quality_gate
+    retry_max: 3
+    retry_backoff: 1.0
+
+  - name: cache_context
+    tool: store_context
+    description: Cache pipeline context for future Copilot interactions
+    config:
+      cache_ttl: 86400
+      include_embeddings: true
+      index_for_search: true
+    depends_on:
+      - store_documentation
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: policy_check
+    tool: check_policy
+    description: Validate all outputs against organizational data policies
+    config:
+      policy_sets:
+        - data_classification
+        - retention
+        - access_control
+      enforce: true
+    depends_on:
+      - classify_columns
+      - store_documentation
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: generate_report
+    tool: store_context
+    description: Generate final pipeline documentation report
+    config:
+      report_format: html
+      include_summary: true
+      include_quality_scores: true
+      include_lineage_diagram: true
+      include_glossary: true
+      include_policy_status: true
+    depends_on:
+      - cache_context
+      - policy_check
+    retry_max: 2
+    retry_backoff: 1.0

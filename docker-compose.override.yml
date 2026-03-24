@@ -1,0 +1,59 @@
+# =============================================================================
+# UDC Enterprise Platform — Docker Compose Override (Development)
+# =============================================================================
+# Hot reload volumes, debug ports, verbose logging
+
+services:
+  classifier:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Logging__LogLevel__Default: Debug
+    volumes:
+      - ./src/UDC.Classifier:/src:ro
+
+  metacatalog:
+    environment:
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src/udc_metacatalog:/app:ro
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+
+  contextvault:
+    environment:
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src/udc_contextvault:/app:ro
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
+
+  visionlens:
+    environment:
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src/udc_visionlens:/app:ro
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]
+
+  desktopagent:
+    environment:
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src/udc_desktopagent:/app:ro
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8004", "--reload"]
+
+  policyguard:
+    environment:
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src/udc_policyguard:/app:ro
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8005", "--reload"]
+
+  orchestrator:
+    environment:
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src/udc_orchestrator:/app:ro
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8006", "--reload"]
+
+  portal:
+    volumes:
+      - ./src/udc_portal:/app:ro
+      - /app/node_modules

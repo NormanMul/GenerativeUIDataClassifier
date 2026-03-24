@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package udc.classifier;
+
+option csharp_namespace = "UDC.Classifier.Grpc";
+
+// Classification service for data asset columns
+service ClassifierService {
+  rpc Classify (ClassifyRequest) returns (ClassifyResponse);
+  rpc ClassifyBatch (ClassifyBatchRequest) returns (ClassifyBatchResponse);
+  rpc GetClassification (GetClassificationRequest) returns (ClassificationResult);
+}
+
+message ClassifyRequest {
+  string asset_id = 1;
+  string column_name = 2;
+  repeated string sample_values = 3;
+  ColumnStatistics statistics = 4;
+  map<string, string> metadata = 5;
+}
+
+message ClassifyBatchRequest {
+  repeated ClassifyRequest requests = 1;
+}
+
+message ClassifyResponse {
+  ClassificationResult result = 1;
+  string request_id = 2;
+}
+
+message ClassifyBatchResponse {
+  repeated ClassificationResult results = 1;
+  string batch_id = 2;
+  int32 total_processed = 3;
+  int32 total_errors = 4;
+}
+
+message GetClassificationRequest {
+  string asset_id = 1;
+  string column_name = 2;
+}
+
+message ClassificationResult {
+  string asset_id = 1;
+  string column_name = 2;
+  string classification = 3;          // dimension, measure, key, date, pii, etc.
+  float confidence = 4;               // 0.0 - 1.0
+  string data_type = 5;               // string, integer, float, date, boolean, email, phone
+  bool is_pii = 6;
+  string pii_type = 7;                // ssn, email, phone, credit_card, etc.
+  repeated string suggested_tags = 8;
+  string rationale = 9;               // LLM-generated explanation
+  string classified_at = 10;          // ISO 8601 timestamp
+  string classified_by = 11;          // agent identifier
+}
+
+message ColumnStatistics {
+  float null_percentage = 1;
+  float unique_percentage = 2;
+  int64 total_rows = 3;
+  int64 distinct_count = 4;
+  string min_value = 5;
+  string max_value = 6;
+  double mean = 7;
+  double median = 8;
+  double stddev = 9;
+  repeated PatternFrequency top_patterns = 10;
+  repeated string sample_values = 11;
+}
+
+message PatternFrequency {
+  string pattern = 1;
+  float frequency = 2;
+  int64 count = 3;
+}

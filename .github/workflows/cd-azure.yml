@@ -1,0 +1,108 @@
+# =============================================================================
+# UDC Enterprise Platform — CD Pipeline (Azure Container Apps)
+# =============================================================================
+name: CD — Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  CONTAINER_APP_ENV: ${{ secrets.AZURE_CONTAINER_APP_ENV }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build & Push (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: classifier
+            dockerfile: Dockerfile.dotnet
+            context: .
+          - service: metacatalog
+            dockerfile: Dockerfile.python
+            context: .
+            build_arg: SERVICE=udc_metacatalog
+          - service: contextvault
+            dockerfile: Dockerfile.python
+            context: .
+            build_arg: SERVICE=udc_contextvault
+          - service: visionlens
+            dockerfile: Dockerfile.python
+            context: .
+            build_arg: SERVICE=udc_visionlens
+          - service: desktopagent
+            dockerfile: Dockerfile.python
+            context: .
+            build_arg: SERVICE=udc_desktopagent
+          - service: policyguard
+            dockerfile: Dockerfile.python
+            context: .
+            build_arg: SERVICE=udc_policyguard
+          - service: orchestrator
+            dockerfile: Dockerfile.python
+            context: .
+            build_arg: SERVICE=udc_orchestrator
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_REGISTRY }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.ACR_REGISTRY }}/udc-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.ACR_REGISTRY }}/udc-${{ matrix.service }}:latest
+          build-args: ${{ matrix.build_arg }}
+
+  deploy:
+    name: Deploy (${{ matrix.service }})
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - classifier
+          - metacatalog
+          - contextvault
+          - visionlens
+          - desktopagent
+          - policyguard
+          - orchestrator
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Container Apps
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppName: udc-${{ matrix.service }}
+          containerAppEnvironment: ${{ env.CONTAINER_APP_ENV }}
+          imageToDeploy: ${{ env.ACR_REGISTRY }}/udc-${{ matrix.service }}:${{ github.sha }}

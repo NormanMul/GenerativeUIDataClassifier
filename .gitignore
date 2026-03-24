@@ -1,0 +1,90 @@
+# ═══════════════════════════════════════════════════════════════════════
+# UDC Enterprise Platform — .gitignore
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Environment & Secrets ──────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.pfx
+
+# ── Python ─────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.venv/
+venv/
+ENV/
+*.whl
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# ── .NET ───────────────────────────────────────────────────────────────
+bin/
+obj/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.nupkg
+*.snupkg
+project.lock.json
+*.vs/
+
+# ── Node.js / React ───────────────────────────────────────────────────
+node_modules/
+.pnp.*
+.yarn/
+*.tsbuildinfo
+.vite/
+dist/
+
+# ── IDEs & Editors ────────────────────────────────────────────────────
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Docker ─────────────────────────────────────────────────────────────
+docker-compose.override.local.yml
+
+# ── ML Models ──────────────────────────────────────────────────────────
+*.pt
+*.onnx
+*.bin
+!shared/schemas/*.json
+
+# ── Logs & Temp ────────────────────────────────────────────────────────
+*.log
+logs/
+tmp/
+temp/
+.cache/
+
+# ── Generated / Build Artifacts ────────────────────────────────────────
+src/shared_grpc/*_pb2.py
+src/shared_grpc/*_pb2_grpc.py
+src/shared_grpc/*_pb2.pyi
+openapi.json

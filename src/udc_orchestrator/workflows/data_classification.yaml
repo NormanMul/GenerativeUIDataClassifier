@@ -1,0 +1,101 @@
+# UDC Orchestrator — Data Classification Pipeline Workflow
+# Automated data discovery, classification, and policy enforcement.
+
+name: data_classification
+description: >
+  Data classification pipeline that discovers assets, profiles columns,
+  applies multi-label classification (PII, sensitivity, domain),
+  validates results against policies, and stores classification metadata.
+version: "1.0.0"
+
+metadata:
+  use_case: "Data Classification Pipeline"
+  owner: data_governance
+  tags:
+    - classification
+    - pii
+    - sensitivity
+    - governance
+
+steps:
+  - name: discover_assets
+    tool: search_metadata
+    description: Discover target data assets for classification
+    config:
+      scope: full_catalog
+      filter_unclassified: true
+      include_schema: true
+    depends_on: []
+    retry_max: 3
+    retry_backoff: 1.0
+
+  - name: profile_columns
+    tool: search_metadata
+    description: Profile all columns with statistical analysis and pattern detection
+    config:
+      profiling_depth: standard
+      detect_patterns: true
+      sample_size: 10000
+    depends_on:
+      - discover_assets
+    retry_max: 3
+    retry_backoff: 2.0
+
+  - name: classify_data
+    tool: classify_data
+    description: Apply multi-label classification to all profiled columns
+    config:
+      classification_types:
+        - pii
+        - sensitivity
+        - domain
+        - regulatory
+      confidence_threshold: 0.85
+      use_context: true
+      use_patterns: true
+    depends_on:
+      - profile_columns
+    retry_max: 3
+    retry_backoff: 1.5
+
+  - name: enrich_context
+    tool: store_context
+    description: Enrich classification results with organizational context
+    config:
+      context_sources:
+        - business_glossary
+        - previous_classifications
+        - domain_rules
+      update_embeddings: true
+    depends_on:
+      - classify_data
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: validate_policy
+    tool: check_policy
+    description: Validate classifications against governance policies
+    config:
+      policy_sets:
+        - classification_standards
+        - pii_handling
+        - data_retention
+      enforce: true
+      generate_exceptions: true
+    depends_on:
+      - enrich_context
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: store_results
+    tool: store_context
+    description: Persist classification results and update the metadata catalog
+    config:
+      update_catalog: true
+      notify_stewards: true
+      generate_report: true
+      report_format: html
+    depends_on:
+      - validate_policy
+    retry_max: 3
+    retry_backoff: 1.0

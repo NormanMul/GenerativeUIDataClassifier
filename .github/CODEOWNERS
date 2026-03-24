@@ -1,0 +1,31 @@
+# UDC Enterprise Platform — Code Owners
+# Each line is a file pattern followed by one or more owners.
+
+# Global
+* @NormanMul
+
+# .NET Classifier
+src/UDC.Classifier/ @NormanMul
+
+# Python services
+src/udc_metacatalog/ @NormanMul
+src/udc_contextvault/ @NormanMul
+src/udc_visionlens/ @NormanMul
+src/udc_desktopagent/ @NormanMul
+src/udc_policyguard/ @NormanMul
+src/udc_orchestrator/ @NormanMul
+
+# Frontend
+src/udc_portal/ @NormanMul
+
+# Infrastructure
+infra/ @NormanMul
+
+# Infrastructure
+infra/ @udc-devops-team
+.github/workflows/ @udc-devops-team
+docker-compose.yml @udc-devops-team
+
+# Shared contracts
+shared/proto/ @udc-platform-team
+shared/schemas/ @udc-platform-team

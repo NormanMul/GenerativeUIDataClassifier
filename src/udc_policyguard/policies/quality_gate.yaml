@@ -1,0 +1,34 @@
+# UDC PolicyGuard — Data quality gate policies
+
+policies:
+  - name: null-rate-threshold
+    description: Null values must not exceed 5% of total rows
+    rule_type: quality_gate
+    enabled: true
+    rules:
+      metric: null_rate
+      threshold_percent: 5.0
+      action_on_breach: deny
+      reason: Column null rate exceeds the 5% maximum allowed threshold
+
+  - name: uniqueness-on-primary-keys
+    description: Primary key columns must have 100% uniqueness
+    rule_type: quality_gate
+    enabled: true
+    rules:
+      metric: uniqueness
+      applies_to: primary_key
+      threshold_percent: 100.0
+      action_on_breach: deny
+      reason: Primary key columns must be fully unique
+
+  - name: referential-integrity
+    description: Foreign key references must resolve to valid records
+    rule_type: quality_gate
+    enabled: true
+    rules:
+      metric: referential_integrity
+      required: true
+      threshold_percent: 100.0
+      action_on_breach: deny
+      reason: All foreign key references must point to existing records

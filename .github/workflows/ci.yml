@@ -1,0 +1,160 @@
+# =============================================================================
+# UDC Enterprise Platform — CI Pipeline
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+  DOTNET_VERSION: "8.0.x"
+  NODE_VERSION: "20"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Python: lint + type check + test
+  # ---------------------------------------------------------------------------
+  python:
+    name: Python (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - udc_metacatalog
+          - udc_contextvault
+          - udc_visionlens
+          - udc_desktopagent
+          - udc_policyguard
+          - udc_orchestrator
+    defaults:
+      run:
+        working-directory: src/${{ matrix.service }}
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: udc_test
+          POSTGRES_USER: udc_test
+          POSTGRES_PASSWORD: testpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U udc_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Format check (black)
+        run: black --check .
+
+      - name: Type check (mypy)
+        run: mypy .
+
+      - name: Test (pytest)
+        run: pytest --tb=short -q
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
+          POSTGRES_DB: udc_test
+          POSTGRES_USER: udc_test
+          POSTGRES_PASSWORD: testpassword
+          REDIS_URL: redis://localhost:6379/0
+
+  # ---------------------------------------------------------------------------
+  # .NET: format + build + test
+  # ---------------------------------------------------------------------------
+  dotnet:
+    name: .NET Classifier
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/UDC.Classifier
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Format check
+        run: dotnet format --verify-no-changes
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+
+  # ---------------------------------------------------------------------------
+  # TypeScript: lint + type check + test
+  # ---------------------------------------------------------------------------
+  typescript:
+    name: TypeScript Portal
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/udc_portal
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: src/udc_portal/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Test
+        run: npm run test -- --run
+
+      - name: Build
+        run: npm run build

@@ -1,0 +1,161 @@
+syntax = "proto3";
+
+package udc.metadata;
+
+option csharp_namespace = "UDC.Metadata.Grpc";
+
+// Metadata catalog service
+service MetadataService {
+  rpc RegisterAsset (RegisterAssetRequest) returns (RegisterAssetResponse);
+  rpc GetAsset (GetAssetRequest) returns (DataAsset);
+  rpc ListAssets (ListAssetsRequest) returns (ListAssetsResponse);
+  rpc SearchAssets (SearchAssetsRequest) returns (SearchAssetsResponse);
+  rpc GetLineage (GetLineageRequest) returns (LineageGraph);
+  rpc GetQualityReport (GetQualityReportRequest) returns (QualityReport);
+  rpc RegisterLineageEdge (RegisterLineageEdgeRequest) returns (RegisterLineageEdgeResponse);
+}
+
+message RegisterAssetRequest {
+  DataAsset asset = 1;
+}
+
+message RegisterAssetResponse {
+  string asset_id = 1;
+  bool created = 2;
+}
+
+message GetAssetRequest {
+  string asset_id = 1;
+}
+
+message ListAssetsRequest {
+  string source_type = 1;   // postgres, sap, fabric
+  int32 page = 2;
+  int32 page_size = 3;
+  string search_query = 4;
+}
+
+message ListAssetsResponse {
+  repeated DataAsset assets = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message SearchAssetsRequest {
+  string query = 1;
+  int32 top_k = 2;
+  repeated string source_types = 3;
+  repeated string tags = 4;
+}
+
+message SearchAssetsResponse {
+  repeated SearchResult results = 1;
+}
+
+message SearchResult {
+  DataAsset asset = 1;
+  float score = 2;
+}
+
+message DataAsset {
+  string id = 1;
+  string name = 2;
+  string qualified_name = 3;          // schema.table or full path
+  string source_type = 4;             // postgres, sap, fabric
+  string source_instance = 5;         // store ID or connection name
+  string database_name = 6;
+  string schema_name = 7;
+  string description = 8;
+  repeated ColumnProfile columns = 9;
+  repeated string tags = 10;
+  float quality_score = 11;           // 0-100
+  string owner = 12;
+  string created_at = 13;
+  string updated_at = 14;
+  map<string, string> properties = 15;
+}
+
+message ColumnProfile {
+  string name = 1;
+  string data_type = 2;
+  string description = 3;
+  bool is_nullable = 4;
+  bool is_primary_key = 5;
+  bool is_foreign_key = 6;
+  string foreign_key_ref = 7;        // target_table.target_column
+  float null_percentage = 8;
+  float unique_percentage = 9;
+  bool is_pii = 10;
+  string pii_type = 11;
+  string classification = 12;        // dimension, measure, key, date, pii
+  repeated string tags = 13;
+  repeated string sample_values = 14;
+  repeated string glossary_terms = 15;
+}
+
+message GetLineageRequest {
+  string asset_id = 1;
+  string column_name = 2;             // optional: column-level lineage
+  string direction = 3;               // upstream, downstream, both
+  int32 depth = 4;                    // max traversal depth
+}
+
+message LineageGraph {
+  repeated LineageNode nodes = 1;
+  repeated LineageEdge edges = 2;
+}
+
+message LineageNode {
+  string id = 1;
+  string asset_id = 2;
+  string column_name = 3;
+  string label = 4;
+  string node_type = 5;              // table, column, transformation
+  map<string, string> properties = 6;
+}
+
+message LineageEdge {
+  string id = 1;
+  string source_node_id = 2;
+  string target_node_id = 3;
+  string edge_type = 4;              // direct, transformation, aggregation
+  string transformation = 5;         // SQL expression if applicable
+  map<string, string> properties = 6;
+}
+
+message RegisterLineageEdgeRequest {
+  string source_asset_id = 1;
+  string source_column = 2;
+  string target_asset_id = 3;
+  string target_column = 4;
+  string edge_type = 5;
+  string transformation = 6;
+}
+
+message RegisterLineageEdgeResponse {
+  string edge_id = 1;
+}
+
+message GetQualityReportRequest {
+  string asset_id = 1;
+}
+
+message QualityReport {
+  string asset_id = 1;
+  float overall_score = 2;           // 0-100
+  bool passed = 3;
+  repeated QualityCheck checks = 4;
+  string generated_at = 5;
+  string generated_by = 6;
+}
+
+message QualityCheck {
+  string check_name = 1;
+  string check_type = 2;            // null_check, uniqueness, referential_integrity, business_rule
+  string column_name = 3;
+  bool passed = 4;
+  float score = 5;
+  string details = 6;
+  string severity = 7;              // critical, warning, info
+}

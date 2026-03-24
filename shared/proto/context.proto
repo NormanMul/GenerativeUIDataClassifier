@@ -1,0 +1,134 @@
+syntax = "proto3";
+
+package udc.context;
+
+option csharp_namespace = "UDC.Context.Grpc";
+
+// Context vault service for tiered memory management
+service ContextVaultService {
+  rpc AddContext (AddContextRequest) returns (AddContextResponse);
+  rpc GetContext (GetContextRequest) returns (ContextEntry);
+  rpc FindContext (FindContextRequest) returns (FindContextResponse);
+  rpc ListContext (ListContextRequest) returns (ListContextResponse);
+  rpc DeleteContext (DeleteContextRequest) returns (DeleteContextResponse);
+  rpc CreateSession (CreateSessionRequest) returns (Session);
+  rpc GetSession (GetSessionRequest) returns (Session);
+  rpc UpdateSession (UpdateSessionRequest) returns (Session);
+  rpc CloseSession (CloseSessionRequest) returns (CloseSessionResponse);
+}
+
+message AddContextRequest {
+  string path = 1;                    // vault://resources/schema/orders
+  string content = 2;                 // L2 full content
+  map<string, string> metadata = 3;
+  string session_id = 4;             // optional: associate with session
+}
+
+message AddContextResponse {
+  string context_id = 1;
+  string path = 2;
+}
+
+message GetContextRequest {
+  string path = 1;
+  ContextLayer layer = 2;            // L0, L1, or L2
+}
+
+message FindContextRequest {
+  string query = 1;
+  int32 top_k = 2;
+  string namespace = 3;              // resources, user, agent
+  ContextLayer layer = 4;
+  map<string, string> filters = 5;
+}
+
+message FindContextResponse {
+  repeated ContextResult results = 1;
+}
+
+message ContextResult {
+  ContextEntry entry = 1;
+  float score = 2;
+}
+
+message ListContextRequest {
+  string path_prefix = 1;            // vault://resources/
+  bool recursive = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListContextResponse {
+  repeated ContextEntry entries = 1;
+  int32 total_count = 2;
+}
+
+message DeleteContextRequest {
+  string path = 1;
+}
+
+message DeleteContextResponse {
+  bool deleted = 1;
+}
+
+message ContextEntry {
+  string id = 1;
+  string path = 2;                   // vault://resources/pipeline/wms
+  string content_l0 = 3;            // ~100 tokens abstract
+  string content_l1 = 4;            // ~2k tokens overview
+  string content_l2 = 5;            // Full detail
+  map<string, string> metadata = 6;
+  string created_at = 7;
+  string updated_at = 8;
+  string session_id = 9;
+}
+
+enum ContextLayer {
+  L0 = 0;   // Abstract (~100 tokens)
+  L1 = 1;   // Overview (~2k tokens)
+  L2 = 2;   // Full detail
+}
+
+// Session management
+message CreateSessionRequest {
+  string user_id = 1;
+  string role = 2;                   // business_analyst, data_engineer, data_steward
+  map<string, string> metadata = 3;
+}
+
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+message UpdateSessionRequest {
+  string session_id = 1;
+  string message_role = 2;          // user, assistant
+  string message_content = 3;
+}
+
+message CloseSessionRequest {
+  string session_id = 1;
+  bool extract_memories = 2;        // auto-extract long-term memories
+}
+
+message CloseSessionResponse {
+  string session_id = 1;
+  int32 memories_extracted = 2;
+}
+
+message Session {
+  string id = 1;
+  string user_id = 2;
+  string role = 3;
+  repeated Message messages = 4;
+  string status = 5;               // active, closed
+  string created_at = 6;
+  string updated_at = 7;
+  map<string, string> metadata = 8;
+}
+
+message Message {
+  string role = 1;
+  string content = 2;
+  string timestamp = 3;
+}

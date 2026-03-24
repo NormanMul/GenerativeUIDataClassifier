@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://udc.enterprise/schemas/policy_rule.json",
+  "title": "PolicyRule",
+  "description": "Schema for governance policy rules used by UDC PolicyGuard",
+  "type": "object",
+  "required": ["id", "name", "rule_type", "condition", "action"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "description": "Unique rule identifier"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "description": {
+      "type": "string"
+    },
+    "rule_type": {
+      "type": "string",
+      "enum": ["action_allowlist", "data_sensitivity", "rate_limit", "pii_access", "quality_threshold", "approval_required"],
+      "description": "Type of policy rule"
+    },
+    "condition": {
+      "type": "object",
+      "description": "Condition to evaluate",
+      "properties": {
+        "agent_roles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Applicable agent roles"
+        },
+        "action_types": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Action types this rule applies to"
+        },
+        "resource_pattern": {
+          "type": "string",
+          "description": "Regex pattern for target resources"
+        },
+        "data_classification": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Data classification types: pii, sensitive, public"
+        },
+        "min_trust_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "expression": {
+          "type": "string",
+          "description": "Custom condition expression"
+        }
+      }
+    },
+    "action": {
+      "type": "string",
+      "enum": ["allow", "deny", "require_approval", "log_warning", "rate_limit"],
+      "description": "Action to take when condition matches"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "info"],
+      "default": "medium"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

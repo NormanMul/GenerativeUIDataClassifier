@@ -1,0 +1,1 @@
+"""UDC MetaCatalog — Tests package."""

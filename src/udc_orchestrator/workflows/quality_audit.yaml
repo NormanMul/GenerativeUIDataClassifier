@@ -1,0 +1,98 @@
+# UDC Orchestrator — Quality Audit Workflow
+# Data quality gate validation and compliance reporting.
+
+name: quality_audit
+description: >
+  Quality audit workflow that profiles data assets, runs quality rule
+  validation, checks compliance against policies, and generates
+  audit reports with remediation recommendations.
+version: "1.0.0"
+
+metadata:
+  use_case: "Quality Gate Validation"
+  owner: data_quality
+  tags:
+    - quality
+    - audit
+    - compliance
+    - validation
+
+steps:
+  - name: select_assets
+    tool: search_metadata
+    description: Select data assets for quality auditing based on schedule or trigger
+    config:
+      selection_criteria:
+        - scheduled_audit
+        - quality_score_below_threshold
+        - recently_modified
+      quality_threshold: 0.85
+      include_dependencies: true
+    depends_on: []
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: run_quality_rules
+    tool: search_metadata
+    description: Execute quality validation rules against selected assets
+    config:
+      rule_categories:
+        - completeness
+        - consistency
+        - accuracy
+        - uniqueness
+        - timeliness
+        - validity
+      parallel_execution: true
+      sample_based: false
+    depends_on:
+      - select_assets
+    retry_max: 3
+    retry_backoff: 2.0
+
+  - name: check_compliance
+    tool: check_policy
+    description: Validate quality results against compliance and governance policies
+    config:
+      policy_sets:
+        - data_quality_standards
+        - regulatory_compliance
+        - sla_requirements
+      generate_violations: true
+      severity_levels:
+        - critical
+        - high
+        - medium
+        - low
+    depends_on:
+      - run_quality_rules
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: generate_audit_report
+    tool: store_context
+    description: Generate comprehensive audit report with scores and remediation steps
+    config:
+      report_format: html
+      include_trend_analysis: true
+      include_remediation: true
+      include_executive_summary: true
+      notify_stakeholders: true
+      store_historical: true
+    depends_on:
+      - check_compliance
+    retry_max: 2
+    retry_backoff: 1.0
+
+  - name: update_quality_scores
+    tool: search_metadata
+    description: Update quality scores in the metadata catalog
+    config:
+      update_catalog: true
+      update_dashboards: true
+      trigger_alerts_on_degradation: true
+      degradation_threshold: 0.05
+    depends_on:
+      - check_compliance
+    retry_max: 2
+    retry_backoff: 1.0

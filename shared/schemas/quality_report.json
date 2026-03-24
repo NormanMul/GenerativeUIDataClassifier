@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://udc.enterprise/schemas/quality_report.json",
+  "title": "QualityReport",
+  "description": "Schema for data quality gate results",
+  "type": "object",
+  "required": ["asset_id", "overall_score", "passed", "checks", "generated_at"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "asset_id": {
+      "type": "string",
+      "description": "Reference to the data asset"
+    },
+    "overall_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Overall quality score 0-100"
+    },
+    "passed": {
+      "type": "boolean",
+      "description": "Whether the asset passes the quality gate"
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/quality_check"
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_checks": { "type": "integer" },
+        "passed_checks": { "type": "integer" },
+        "failed_checks": { "type": "integer" },
+        "critical_failures": { "type": "integer" },
+        "warnings": { "type": "integer" }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generated_by": {
+      "type": "string",
+      "description": "Agent or user that generated the report"
+    },
+    "execution_time_ms": {
+      "type": "integer",
+      "description": "Total profiling time in milliseconds"
+    }
+  },
+  "$defs": {
+    "quality_check": {
+      "type": "object",
+      "required": ["check_name", "check_type", "passed"],
+      "properties": {
+        "check_name": {
+          "type": "string"
+        },
+        "check_type": {
+          "type": "string",
+          "enum": ["null_check", "uniqueness", "referential_integrity", "type_consistency", "business_rule", "pii_detection", "pattern_check"]
+        },
+        "column_name": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "expected": {
+          "type": "string",
+          "description": "Expected value or constraint"
+        },
+        "actual": {
+          "type": "string",
+          "description": "Actual measured value"
+        },
+        "details": {
+          "type": "string",
+          "description": "Detailed explanation"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "warning", "info"]
+        }
+      }
+    }
+  }
+}

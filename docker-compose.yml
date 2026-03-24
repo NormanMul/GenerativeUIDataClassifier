@@ -1,0 +1,284 @@
+# =============================================================================
+# UDC Enterprise Platform — Docker Compose (Local Development)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-udc}
+      POSTGRES_USER: ${POSTGRES_USER:-udc_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_postgres_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-udc_admin} -d ${POSTGRES_DB:-udc}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      ANONYMIZED_TELEMETRY: "false"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Core: UDC Classifier (.NET)
+  # ---------------------------------------------------------------------------
+  classifier:
+    build:
+      context: .
+      dockerfile: Dockerfile.dotnet
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__PostgreSQL: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-udc};Username=${POSTGRES_USER:-udc_admin};Password=${POSTGRES_PASSWORD:-changeme_postgres_password}"
+      Redis__ConnectionString: "redis:6379"
+      AzureOpenAI__Endpoint: ${AZURE_OPENAI_ENDPOINT}
+      AzureOpenAI__ApiKey: ${AZURE_OPENAI_API_KEY}
+      AzureOpenAI__DeploymentChat: ${AZURE_OPENAI_DEPLOYMENT_CHAT:-gpt-4o}
+      AzureOpenAI__DeploymentEmbedding: ${AZURE_OPENAI_DEPLOYMENT_EMBEDDING:-text-embedding-3-small}
+      PowerBI__TenantId: ${POWERBI_TENANT_ID}
+      PowerBI__ClientId: ${POWERBI_CLIENT_ID}
+      PowerBI__ClientSecret: ${POWERBI_CLIENT_SECRET}
+      PowerBI__WorkspaceId: ${POWERBI_WORKSPACE_ID}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Subsystem 1: UDC MetaCatalog
+  # ---------------------------------------------------------------------------
+  metacatalog:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+      args:
+        SERVICE: udc_metacatalog
+    ports:
+      - "8001:8001"
+      - "50052:50052"
+    environment:
+      PORT: "8001"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-udc}
+      POSTGRES_USER: ${POSTGRES_USER:-udc_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_postgres_password}
+      REDIS_URL: redis://redis:6379/0
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_DEPLOYMENT_EMBEDDING: ${AZURE_OPENAI_DEPLOYMENT_EMBEDDING:-text-embedding-3-small}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8001"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Subsystem 2: UDC ContextVault
+  # ---------------------------------------------------------------------------
+  contextvault:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+      args:
+        SERVICE: udc_contextvault
+    ports:
+      - "8002:8002"
+      - "50053:50053"
+    environment:
+      PORT: "8002"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-udc}
+      POSTGRES_USER: ${POSTGRES_USER:-udc_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_postgres_password}
+      REDIS_URL: redis://redis:6379/0
+      CHROMADB_URL: http://chromadb:8000
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_DEPLOYMENT_EMBEDDING: ${AZURE_OPENAI_DEPLOYMENT_EMBEDDING:-text-embedding-3-small}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8002"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Subsystem 3: UDC VisionLens
+  # ---------------------------------------------------------------------------
+  visionlens:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+      args:
+        SERVICE: udc_visionlens
+    ports:
+      - "8003:8003"
+      - "50055:50055"
+    environment:
+      PORT: "8003"
+      AZURE_VISION_ENDPOINT: ${AZURE_VISION_ENDPOINT}
+      AZURE_VISION_API_KEY: ${AZURE_VISION_API_KEY}
+      VISIONLENS_MODEL_PATH: ${VISIONLENS_MODEL_PATH:-yolov8n.pt}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8003"]
+
+  # ---------------------------------------------------------------------------
+  # Subsystem 4: UDC DesktopAgent
+  # ---------------------------------------------------------------------------
+  desktopagent:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+      args:
+        SERVICE: udc_desktopagent
+    ports:
+      - "8004:8004"
+    environment:
+      PORT: "8004"
+      VISIONLENS_URL: http://visionlens:8003
+      CONTEXTVAULT_URL: http://contextvault:8002
+      POLICYGUARD_URL: http://policyguard:8005
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8004"]
+    depends_on:
+      - visionlens
+
+  # ---------------------------------------------------------------------------
+  # Subsystem 5: UDC PolicyGuard
+  # ---------------------------------------------------------------------------
+  policyguard:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+      args:
+        SERVICE: udc_policyguard
+    ports:
+      - "8005:8005"
+      - "50054:50054"
+    environment:
+      PORT: "8005"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-udc}
+      POSTGRES_USER: ${POSTGRES_USER:-udc_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_postgres_password}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8005"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Subsystem 6: UDC Orchestrator
+  # ---------------------------------------------------------------------------
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+      args:
+        SERVICE: udc_orchestrator
+    ports:
+      - "8006:8006"
+    environment:
+      PORT: "8006"
+      CLASSIFIER_URL: http://classifier:8080
+      METACATALOG_URL: http://metacatalog:8001
+      CONTEXTVAULT_URL: http://contextvault:8002
+      VISIONLENS_URL: http://visionlens:8003
+      DESKTOPAGENT_URL: http://desktopagent:8004
+      POLICYGUARD_URL: http://policyguard:8005
+      REDIS_URL: redis://redis:6379/0
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_DEPLOYMENT_CHAT: ${AZURE_OPENAI_DEPLOYMENT_CHAT:-gpt-4o}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    command: ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8006"]
+    depends_on:
+      - classifier
+      - metacatalog
+      - contextvault
+      - policyguard
+
+  # ---------------------------------------------------------------------------
+  # Frontend: UDC Portal
+  # ---------------------------------------------------------------------------
+  portal:
+    build:
+      context: ./src/udc_portal
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8006
+    depends_on:
+      - orchestrator
+
+  # ---------------------------------------------------------------------------
+  # Reverse Proxy
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - classifier
+      - metacatalog
+      - contextvault
+      - visionlens
+      - desktopagent
+      - policyguard
+      - orchestrator
+      - portal
+
+volumes:
+  postgres_data:
+  redis_data:
+  chromadb_data:

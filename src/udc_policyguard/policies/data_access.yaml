@@ -1,0 +1,49 @@
+# UDC PolicyGuard — Data access and PII/sensitive data policies
+
+policies:
+  - name: pii-access-control
+    description: Restrict access to personally identifiable information
+    rule_type: data_access
+    enabled: true
+    rules:
+      pii_fields:
+        - email
+        - phone
+        - ssn
+        - national_id
+        - date_of_birth
+        - address
+        - credit_card
+      require_role: pii_reader
+      mask_by_default: true
+      allow_export: false
+
+  - name: sensitive-data-classification
+    description: Enforce access based on data sensitivity level
+    rule_type: data_classification
+    enabled: true
+    rules:
+      levels:
+        public:
+          min_trust_score: 0
+          require_role: null
+        internal:
+          min_trust_score: 200
+          require_role: internal_reader
+        confidential:
+          min_trust_score: 500
+          require_role: confidential_reader
+        restricted:
+          min_trust_score: 800
+          require_role: restricted_reader
+
+  - name: data-export-controls
+    description: Restrictions on bulk data export operations
+    rule_type: data_export
+    enabled: true
+    rules:
+      max_rows_per_export: 10000
+      require_approval_above: 5000
+      blocked_formats:
+        - csv_unencrypted
+      require_audit_log: true

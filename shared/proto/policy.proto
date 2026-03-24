@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package udc.policy;
+
+option csharp_namespace = "UDC.Policy.Grpc";
+
+// Policy guard service for governance and audit
+service PolicyGuardService {
+  rpc EvaluatePolicy (PolicyEvalRequest) returns (PolicyEvalResponse);
+  rpc GetAuditTrail (GetAuditTrailRequest) returns (GetAuditTrailResponse);
+  rpc GetTrustScore (GetTrustScoreRequest) returns (TrustScore);
+  rpc RecordAudit (RecordAuditRequest) returns (RecordAuditResponse);
+}
+
+message PolicyEvalRequest {
+  string agent_id = 1;
+  string session_id = 2;
+  string action_type = 3;           // read_data, write_data, execute_query, access_pii, desktop_action
+  string resource = 4;              // target resource identifier
+  map<string, string> context = 5;  // additional context
+  string user_role = 6;             // business_analyst, data_engineer, data_steward
+}
+
+message PolicyEvalResponse {
+  bool allowed = 1;
+  string decision = 2;             // allow, deny, require_approval
+  string reason = 3;
+  repeated string violated_policies = 4;
+  repeated string applied_policies = 5;
+  int32 evaluation_time_us = 6;    // microseconds
+  TrustScore updated_trust = 7;
+}
+
+message GetAuditTrailRequest {
+  string agent_id = 1;
+  string session_id = 2;
+  string start_time = 3;           // ISO 8601
+  string end_time = 4;
+  string action_type = 5;
+  int32 page = 6;
+  int32 page_size = 7;
+}
+
+message GetAuditTrailResponse {
+  repeated AuditEntry entries = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message RecordAuditRequest {
+  AuditEntry entry = 1;
+}
+
+message RecordAuditResponse {
+  string audit_id = 1;
+}
+
+message AuditEntry {
+  string id = 1;
+  string timestamp = 2;            // ISO 8601
+  string agent_id = 3;
+  string session_id = 4;
+  string user_id = 5;
+  string action_type = 6;
+  string resource = 7;
+  string decision = 8;             // allow, deny
+  string details = 9;              // JSON string with action details
+  int32 trust_score_before = 10;
+  int32 trust_score_after = 11;
+  string service = 12;             // which UDC service
+}
+
+message GetTrustScoreRequest {
+  string agent_id = 1;
+  string session_id = 2;
+}
+
+message TrustScore {
+  string agent_id = 1;
+  string session_id = 2;
+  int32 score = 3;                 // 0-1000
+  string level = 4;                // untrusted, low, medium, high, trusted
+  int32 total_actions = 5;
+  int32 violations = 6;
+  string last_updated = 7;
+}

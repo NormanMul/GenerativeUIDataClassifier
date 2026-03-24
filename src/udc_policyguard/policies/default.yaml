@@ -1,0 +1,31 @@
+# UDC PolicyGuard — Default base policies
+# These policies apply to all agents unless overridden.
+
+policies:
+  - name: default-action-limits
+    description: Base action rate limits for all agents
+    rule_type: rate_limit
+    enabled: true
+    rules:
+      max_actions_per_minute: 60
+      max_actions_per_hour: 1000
+      max_concurrent_actions: 5
+
+  - name: default-logging
+    description: Mandatory logging requirements for all actions
+    rule_type: logging
+    enabled: true
+    rules:
+      log_all_actions: true
+      log_decision_reason: true
+      log_context: true
+      retain_days: 90
+
+  - name: default-session-limits
+    description: Session duration and scope limits
+    rule_type: session
+    enabled: true
+    rules:
+      max_session_duration_minutes: 480
+      require_authentication: true
+      require_session_id: true

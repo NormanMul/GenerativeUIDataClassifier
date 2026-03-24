@@ -1,0 +1,15 @@
+# =============================================================================
+# UDC Enterprise Platform — Production Configuration
+# All secrets must come from environment variables or Azure Key Vault.
+# =============================================================================
+
+_extends: settings.base.yaml
+
+logging:
+  level: "WARNING"
+
+quality:
+  default_null_threshold: 3.0
+
+features:
+  enable_desktop_agent: false

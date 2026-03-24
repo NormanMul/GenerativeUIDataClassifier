@@ -1,0 +1,78 @@
+# =============================================================================
+# UDC Enterprise Platform — Base Configuration
+# Shared across all environments. Override per environment.
+# =============================================================================
+
+platform:
+  name: "UDC Enterprise Platform"
+  version: "0.1.0"
+
+services:
+  classifier:
+    host: "classifier"
+    rest_port: 8080
+    grpc_port: 50051
+  metacatalog:
+    host: "metacatalog"
+    rest_port: 8001
+    grpc_port: 50052
+  contextvault:
+    host: "contextvault"
+    rest_port: 8002
+    grpc_port: 50053
+  visionlens:
+    host: "visionlens"
+    rest_port: 8003
+    grpc_port: 50055
+  desktopagent:
+    host: "desktopagent"
+    rest_port: 8004
+  policyguard:
+    host: "policyguard"
+    rest_port: 8005
+    grpc_port: 50054
+  orchestrator:
+    host: "orchestrator"
+    rest_port: 8006
+  portal:
+    host: "portal"
+    port: 3000
+
+logging:
+  level: "INFO"
+  format: "json"
+  include_timestamp: true
+  include_service: true
+  include_trace_id: true
+
+quality:
+  default_null_threshold: 5.0        # fail if >5% nulls on required columns
+  default_uniqueness_check: true
+  default_referential_integrity: true
+  default_business_rules: true
+  score_weights:
+    null_check: 0.25
+    uniqueness: 0.25
+    referential_integrity: 0.25
+    business_rules: 0.25
+
+context_vault:
+  l0_max_tokens: 100
+  l1_max_tokens: 2000
+  cache_ttl_seconds: 3600
+  retrieval_top_k: 10
+
+policy:
+  default_trust_score: 500
+  trust_score_max: 1000
+  trust_increment_success: 10
+  trust_decrement_violation: 50
+  rate_limit_default: 100            # requests per minute per agent
+
+features:
+  enable_pii_detection: true
+  enable_auto_tagging: true
+  enable_lineage_parsing: true
+  enable_quality_gate: true
+  enable_dashboard_builder: true
+  enable_desktop_agent: false        # disabled by default in non-dev

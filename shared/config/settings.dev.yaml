@@ -1,0 +1,29 @@
+# =============================================================================
+# UDC Enterprise Platform — Development Configuration
+# =============================================================================
+
+_extends: settings.base.yaml
+
+services:
+  classifier:
+    host: "localhost"
+  metacatalog:
+    host: "localhost"
+  contextvault:
+    host: "localhost"
+  visionlens:
+    host: "localhost"
+  desktopagent:
+    host: "localhost"
+  policyguard:
+    host: "localhost"
+  orchestrator:
+    host: "localhost"
+  portal:
+    host: "localhost"
+
+logging:
+  level: "DEBUG"
+
+features:
+  enable_desktop_agent: true

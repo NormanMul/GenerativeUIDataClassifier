@@ -1,0 +1,49 @@
+# =============================================================================
+# UDC Enterprise Platform — .NET Services Multi-Stage Dockerfile
+# =============================================================================
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+WORKDIR /src
+
+# Copy solution and project files
+COPY src/UDC.Classifier/UDC.Classifier.sln ./
+COPY src/UDC.Classifier/UDC.Classifier.Core/UDC.Classifier.Core.csproj ./UDC.Classifier.Core/
+COPY src/UDC.Classifier/UDC.Classifier.Api/UDC.Classifier.Api.csproj ./UDC.Classifier.Api/
+
+# Restore dependencies
+RUN dotnet restore
+
+# Copy all source
+COPY src/UDC.Classifier/ ./
+COPY shared/ /shared/
+
+# Build and publish
+RUN dotnet publish UDC.Classifier.Api/UDC.Classifier.Api.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# --- Runtime stage ---
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r udc && useradd -r -g udc -d /app -s /sbin/nologin udc
+
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+RUN chown -R udc:udc /app
+
+USER udc
+
+ENV ASPNETCORE_URLS=http://+:8080 \
+    DOTNET_EnableDiagnostics=0
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["dotnet", "UDC.Classifier.Api.dll"]

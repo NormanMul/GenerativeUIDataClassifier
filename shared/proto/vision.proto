@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package udc.vision;
+
+option csharp_namespace = "UDC.Vision.Grpc";
+
+// Vision service for screen parsing and UI element detection
+service VisionLensService {
+  rpc ParseScreen (ParseRequest) returns (ParseResponse);
+  rpc DetectElement (DetectElementRequest) returns (DetectElementResponse);
+  rpc GroundText (GroundTextRequest) returns (GroundTextResponse);
+}
+
+message ParseRequest {
+  bytes screenshot = 1;              // PNG/JPEG bytes
+  string format = 2;                 // png, jpeg
+  bool include_ocr = 3;
+  bool include_caption = 4;
+  float confidence_threshold = 5;    // minimum detection confidence
+}
+
+message ParseResponse {
+  ScreenState screen_state = 1;
+  string request_id = 2;
+  int32 processing_time_ms = 3;
+}
+
+message DetectElementRequest {
+  bytes screenshot = 1;
+  string description = 2;           // NL description: "the Save button"
+  string element_type = 3;          // button, input, dropdown, etc. (optional filter)
+}
+
+message DetectElementResponse {
+  repeated UIElement matches = 1;
+  float processing_time_ms = 2;
+}
+
+message GroundTextRequest {
+  bytes screenshot = 1;
+  string instruction = 2;           // "Click the Save button in the top-right"
+}
+
+message GroundTextResponse {
+  int32 x = 1;
+  int32 y = 2;
+  float confidence = 3;
+  UIElement matched_element = 4;
+  string reasoning = 5;
+}
+
+message UIElement {
+  string id = 1;
+  string element_type = 2;          // button, input, text, image, dropdown, checkbox, link
+  BoundingBox bbox = 3;
+  string text = 4;                  // OCR-extracted text
+  string caption = 5;               // VLM-generated functional description
+  float confidence = 6;
+  bool interactable = 7;
+  map<string, string> attributes = 8;
+}
+
+message BoundingBox {
+  int32 x = 1;
+  int32 y = 2;
+  int32 width = 3;
+  int32 height = 4;
+}
+
+message ScreenState {
+  repeated UIElement elements = 1;
+  string screenshot_b64 = 2;
+  int32 screen_width = 3;
+  int32 screen_height = 4;
+  string captured_at = 5;           // ISO 8601 timestamp
+}

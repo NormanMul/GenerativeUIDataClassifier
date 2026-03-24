@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package udc.desktop;
+
+option csharp_namespace = "UDC.Desktop.Grpc";
+
+// Desktop agent service for task execution and automation
+service DesktopAgentService {
+  rpc ExecuteTask (TaskRequest) returns (TaskResponse);
+  rpc ExecuteAction (ActionRequest) returns (ActionResult);
+  rpc GetScreenshot (ScreenshotRequest) returns (ScreenshotResponse);
+  rpc GetTaskStatus (GetTaskStatusRequest) returns (TaskStatus);
+}
+
+message TaskRequest {
+  string task_id = 1;
+  string instruction = 1;           // NL instruction: "Open Chrome, navigate to SAP, export report"
+  int32 max_steps = 3;              // maximum allowed steps
+  int32 timeout_seconds = 4;
+  map<string, string> context = 5;  // additional context from ContextVault
+}
+
+message TaskResponse {
+  string task_id = 1;
+  bool success = 2;
+  string status = 3;                // completed, failed, timeout, cancelled
+  repeated StepResult steps = 4;
+  string error_message = 5;
+  int32 total_time_ms = 6;
+}
+
+message ActionRequest {
+  string action_type = 1;           // click, type, scroll, drag, keypress, wait
+  int32 x = 2;                      // screen x coordinate
+  int32 y = 3;                      // screen y coordinate
+  string text = 4;                   // text to type
+  string key_combo = 5;             // e.g., "ctrl+s", "enter", "tab"
+  int32 scroll_amount = 6;          // pixels to scroll (positive=down)
+  int32 drag_to_x = 7;
+  int32 drag_to_y = 8;
+  int32 delay_ms = 9;               // delay before executing
+}
+
+message ActionResult {
+  bool success = 1;
+  string action_type = 2;
+  bytes screenshot_after = 3;       // screenshot taken after action
+  string error_message = 4;
+  int32 execution_time_ms = 5;
+}
+
+message ScreenshotRequest {
+  string format = 1;                // png, jpeg
+  int32 quality = 2;                // JPEG quality 1-100
+}
+
+message ScreenshotResponse {
+  bytes screenshot = 1;
+  string format = 2;
+  int32 width = 3;
+  int32 height = 4;
+  string captured_at = 5;
+}
+
+message GetTaskStatusRequest {
+  string task_id = 1;
+}
+
+message TaskStatus {
+  string task_id = 1;
+  string status = 2;                // pending, running, completed, failed
+  int32 current_step = 3;
+  int32 total_steps = 4;
+  string current_action = 5;
+  repeated StepResult completed_steps = 6;
+}
+
+message StepResult {
+  int32 step_number = 1;
+  string action_description = 2;    // NL description of what was done
+  string action_type = 3;
+  bool success = 4;
+  string error_message = 5;
+  int32 execution_time_ms = 6;
+  bytes screenshot = 7;             // screenshot after step
+}

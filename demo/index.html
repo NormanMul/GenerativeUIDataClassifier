@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UDC Dashboard Builder — Self-Service Demo</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        'udc-blue': '#1e40af',
+        'udc-green': '#16a34a',
+      }
+    }
+  }
+}
+</script>
+<style>
+@keyframes pulse-border { 0%,100%{border-color:#3b82f6} 50%{border-color:#93c5fd} }
+.animate-pulse-border { animation: pulse-border 1.5s ease-in-out infinite; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- NAV -->
+<header class="bg-udc-blue text-white shadow-md">
+  <nav class="max-w-7xl mx-auto flex items-center gap-6 px-4 py-3">
+    <span class="text-lg font-bold tracking-tight">UDC Portal</span>
+    <a href="#catalog" class="text-blue-200 hover:text-white text-sm">📂 Data Catalog</a>
+    <a href="#" class="text-white font-semibold text-sm underline underline-offset-4">📊 Dashboard</a>
+    <a href="#governance" class="text-blue-200 hover:text-white text-sm">🛡️ Governance</a>
+    <a href="#chat" class="text-blue-200 hover:text-white text-sm">💬 Chat</a>
+    <div class="ml-auto flex items-center gap-2">
+      <select id="nav-role" class="bg-white/10 border border-blue-400/30 text-white text-sm rounded-md px-3 py-1.5">
+        <option value="Business Analyst">📊 Business Analyst</option>
+        <option value="Data Engineer">⚙️ Data Engineer</option>
+        <option value="Data Steward">🛡️ Data Steward</option>
+      </select>
+    </div>
+  </nav>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6">
+
+<!-- ═══ DASHBOARD BUILDER ═══ -->
+<section id="dashboard-builder">
+  <div class="flex gap-6">
+    <!-- Main content -->
+    <div class="flex-1 min-w-0 space-y-5">
+      <h1 class="text-2xl font-bold text-gray-900">Self-Service Dashboard Builder</h1>
+      <p class="text-sm text-gray-500">Describe the dashboard you want in plain English. The AI will analyze your data sources and generate an interactive dashboard.</p>
+
+      <!-- Quick prompts -->
+      <div class="flex flex-wrap gap-2">
+        <button onclick="usePrompt('Show me sales by region for Q4 2024 with top 10 stores')" class="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-200 hover:bg-blue-100 transition">📊 Sales by Region</button>
+        <button onclick="usePrompt('Build an inventory health dashboard with low-stock alerts and reorder points')" class="px-3 py-1.5 text-xs bg-green-50 text-green-700 rounded-full border border-green-200 hover:bg-green-100 transition">📦 Inventory Health</button>
+        <button onclick="usePrompt('Customer loyalty analysis with tier breakdown and registration trends')" class="px-3 py-1.5 text-xs bg-purple-50 text-purple-700 rounded-full border border-purple-200 hover:bg-purple-100 transition">👥 Customer Loyalty</button>
+        <button onclick="usePrompt('Data quality scores across all sources with trend analysis')" class="px-3 py-1.5 text-xs bg-amber-50 text-amber-700 rounded-full border border-amber-200 hover:bg-amber-100 transition">✅ Data Quality</button>
+      </div>
+
+      <!-- Input area -->
+      <div class="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Describe the dashboard you want to build</label>
+        <textarea id="prompt-input" rows="3"
+          placeholder='e.g. "Show me a sales by region dashboard for Q4 2024 with top 10 stores"'
+          class="w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"></textarea>
+        <div class="flex items-center gap-3 mt-3">
+          <select id="role-select" class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
+            <option value="Business Analyst">📊 Business Analyst</option>
+            <option value="Data Engineer">⚙️ Data Engineer</option>
+            <option value="Data Steward">🛡️ Data Steward</option>
+          </select>
+          <button id="generate-btn" onclick="generateDashboard()"
+            class="flex items-center gap-2 bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <span id="btn-spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+            <span id="btn-text">Generate Dashboard</span>
+          </button>
+        </div>
+        <div id="error-msg" class="hidden mt-3 bg-red-50 border border-red-200 rounded-md px-3 py-2 text-sm text-red-700"></div>
+        <div id="status-msg" class="hidden mt-3 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 text-sm text-blue-700"></div>
+      </div>
+
+      <!-- Dashboard preview -->
+      <div id="dashboard-preview">
+        <div class="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white text-sm text-gray-400">
+          Dashboard preview will appear here after generation
+        </div>
+      </div>
+    </div>
+
+    <!-- History sidebar -->
+    <div class="w-72 flex-shrink-0">
+      <h2 class="text-sm font-semibold text-gray-700 mb-3">Recent Requests</h2>
+      <div id="history-list">
+        <p class="text-xs text-gray-400">No dashboard requests yet</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="my-10 border-gray-200">
+
+<!-- ═══ DATA CATALOG ═══ -->
+<section id="catalog">
+  <h1 class="text-2xl font-bold text-gray-900 mb-4">Data Catalog</h1>
+  <div class="flex gap-3 mb-4">
+    <input id="catalog-search" type="text" placeholder="Search assets..."
+      class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      oninput="searchCatalog()">
+    <button onclick="filterSource('')" class="px-3 py-1.5 text-xs rounded-full border border-gray-300 hover:bg-gray-100 source-filter active-filter" data-source="">All</button>
+    <button onclick="filterSource('PostgreSQL')" class="px-3 py-1.5 text-xs rounded-full border border-gray-300 hover:bg-blue-100 source-filter" data-source="PostgreSQL">PostgreSQL</button>
+    <button onclick="filterSource('SAP')" class="px-3 py-1.5 text-xs rounded-full border border-gray-300 hover:bg-orange-100 source-filter" data-source="SAP">SAP</button>
+    <button onclick="filterSource('Fabric')" class="px-3 py-1.5 text-xs rounded-full border border-gray-300 hover:bg-purple-100 source-filter" data-source="Fabric">Fabric</button>
+  </div>
+  <div id="catalog-table" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div class="flex items-center justify-center py-12 text-gray-400 text-sm">Loading catalog...</div>
+  </div>
+  <div id="catalog-pagination" class="flex items-center justify-between mt-3"></div>
+</section>
+
+<hr class="my-10 border-gray-200">
+
+<!-- ═══ GOVERNANCE ═══ -->
+<section id="governance">
+  <h1 class="text-2xl font-bold text-gray-900 mb-4">Governance Center</h1>
+  <div id="gov-stats" class="grid grid-cols-3 gap-4 mb-6"></div>
+  <div class="flex gap-3 mb-4">
+    <button onclick="showGovTab('policies')" class="gov-tab px-4 py-2 text-sm rounded-md bg-blue-600 text-white font-medium" data-tab="policies">Policies</button>
+    <button onclick="showGovTab('audit')" class="gov-tab px-4 py-2 text-sm rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200" data-tab="audit">Audit Trail</button>
+    <button onclick="showGovTab('trust')" class="gov-tab px-4 py-2 text-sm rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200" data-tab="trust">Trust Scores</button>
+  </div>
+  <div id="gov-content" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"></div>
+</section>
+
+<hr class="my-10 border-gray-200">
+
+<!-- ═══ CHAT ═══ -->
+<section id="chat">
+  <h1 class="text-2xl font-bold text-gray-900 mb-4">Chat with UDC Copilot</h1>
+  <div class="bg-white rounded-lg border border-gray-200 shadow-sm max-w-3xl">
+    <div id="chat-messages" class="h-80 overflow-y-auto p-4 space-y-3">
+      <div class="flex justify-start">
+        <div class="bg-gray-100 rounded-lg px-4 py-2 max-w-md text-sm text-gray-700">
+          Hi! I'm the UDC Copilot. Ask me about your data, dashboards, or governance policies.
+        </div>
+      </div>
+    </div>
+    <div class="border-t border-gray-200 p-3 flex gap-2">
+      <input id="chat-input" type="text" placeholder="Ask about your data..."
+        class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        onkeydown="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Send</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="mt-12 py-6 border-t border-gray-200 text-center text-xs text-gray-400">
+  UDC Enterprise Platform — Demo Mode (Mock Backend) — Microsoft SEA Digital Architect Team
+</footer>
+
+<script>
+const API = 'http://localhost:8006';
+const CHART_ICONS = { bar:'📊', line:'📈', pie:'🥧', table:'📋', card:'🔢', scatter:'⚬', map:'🗺️', gauge:'⏱️' };
+
+// Color palettes for charts
+const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316','#14b8a6','#6366f1'];
+const PALETTE_BG = PALETTE.map(c => c + '33');
+let chartInstances = [];
+
+let history = [];
+let currentFilter = '';
+let currentPage = 1;
+
+// ── Dashboard Builder ──
+function usePrompt(text) {
+  document.getElementById('prompt-input').value = text;
+  document.getElementById('prompt-input').focus();
+}
+
+async function generateDashboard() {
+  const prompt = document.getElementById('prompt-input').value.trim();
+  if (!prompt) return;
+
+  const role = document.getElementById('role-select').value;
+  const btn = document.getElementById('generate-btn');
+  const spinner = document.getElementById('btn-spinner');
+  const btnText = document.getElementById('btn-text');
+  const status = document.getElementById('status-msg');
+  const errorDiv = document.getElementById('error-msg');
+
+  btn.disabled = true;
+  spinner.classList.remove('hidden');
+  btnText.textContent = 'Generating…';
+  errorDiv.classList.add('hidden');
+  status.classList.remove('hidden');
+  status.textContent = '🤖 Analyzing data sources and generating dashboard...';
+
+  try {
+    const res = await fetch(API + '/api/workflow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workflow_name: 'dashboard_builder', parameters: { prompt, role } })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    const spec = await res.json();
+
+    status.textContent = '✅ Dashboard generated successfully!';
+    setTimeout(() => status.classList.add('hidden'), 3000);
+
+    renderDashboard(spec);
+
+    history.unshift({ id: Date.now(), prompt, role, timestamp: Date.now(), spec });
+    renderHistory();
+  } catch (e) {
+    errorDiv.textContent = '❌ ' + e.message;
+    errorDiv.classList.remove('hidden');
+    status.classList.add('hidden');
+  } finally {
+    btn.disabled = false;
+    spinner.classList.add('hidden');
+    btnText.textContent = 'Generate Dashboard';
+  }
+}
+
+// ── Mock data generators per chart type / dimension ──
+function mockDataForVisual(v) {
+  const seed = v.title.length + v.chart_type.length; // deterministic-ish
+  const rnd = (min, max) => Math.round(min + ((seed * 9301 + 49297) % 233280) / 233280 * (max - min) + Math.random() * (max - min) * 0.3);
+
+  const dims = v.dimensions || [];
+  const dim0 = (dims[0] || '').toLowerCase();
+
+  // Region labels
+  if (dim0.includes('region') || dim0.includes('area')) {
+    const labels = ['Jakarta','Surabaya','Bandung','Medan','Semarang','Makassar','Bali','Yogyakarta'];
+    return { labels, data: labels.map(() => rnd(800000, 4500000)) };
+  }
+  // Store labels
+  if (dim0.includes('store')) {
+    const labels = ['Store 001','Store 007','Store 012','Store 023','Store 031','Store 045','Store 003','Store 019','Store 050','Store 027'];
+    return { labels: labels.slice(0, v.filters?.top_n || 10), data: labels.slice(0, v.filters?.top_n || 10).map(() => rnd(500000, 3000000)) };
+  }
+  // Date / time trend
+  if (dim0.includes('date') || dim0.includes('month') || dim0.includes('time') || dim0.includes('trend') || dim0.includes('period')) {
+    const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let base = rnd(1000000, 2000000);
+    return { labels, data: labels.map(() => { base += rnd(-200000, 350000); return Math.max(base, 400000); }) };
+  }
+  // Category / product
+  if (dim0.includes('category') || dim0.includes('product') || dim0.includes('type') || dim0.includes('tier')) {
+    const labels = ['Electronics','Groceries','Fashion','Home & Living','Health','Toys','Sports'];
+    return { labels, data: labels.map(() => rnd(300000, 2500000)) };
+  }
+  // Source system
+  if (dim0.includes('source') || dim0.includes('system') || dim0.includes('database')) {
+    const labels = ['PostgreSQL WMS','SAP ERP','MS Fabric','Azure SQL','Blob Storage'];
+    return { labels, data: labels.map(() => rnd(70, 99)) };
+  }
+  // Quality dimension
+  if (dim0.includes('quality') || dim0.includes('score') || dim0.includes('metric')) {
+    const labels = ['Completeness','Accuracy','Timeliness','Consistency','Uniqueness'];
+    return { labels, data: labels.map(() => rnd(65, 99)) };
+  }
+  // Default: generic labels
+  const labels = ['Group A','Group B','Group C','Group D','Group E','Group F'];
+  return { labels, data: labels.map(() => rnd(100000, 2000000)) };
+}
+
+function fmtNumber(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+  return n.toString();
+}
+
+function destroyCharts() {
+  chartInstances.forEach(c => c.destroy());
+  chartInstances = [];
+}
+
+function renderDashboard(spec) {
+  destroyCharts();
+  const cols = spec.layout?.columns || 2;
+  let html = `<div class="rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">`;
+
+  // Header
+  html += `<div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5">
+    <h3 class="text-xl font-bold text-white">${spec.title}</h3>
+    ${spec.description ? `<p class="mt-1 text-sm text-blue-100">${spec.description}</p>` : ''}
+  </div>`;
+
+  // Quality warnings
+  if (spec.quality_warnings?.length) {
+    html += `<div class="border-b border-yellow-200 bg-yellow-50 px-5 py-3">
+      <p class="text-xs font-medium text-yellow-800">⚠️ Quality Warnings</p>
+      <ul class="mt-1 space-y-0.5">
+        ${spec.quality_warnings.map(w => `<li class="text-xs text-yellow-700">• ${w}</li>`).join('')}
+      </ul>
+    </div>`;
+  }
+
+  // Visuals grid
+  html += `<div class="gap-5 p-6" style="display:grid; grid-template-columns:repeat(${cols}, minmax(0,1fr))">`;
+  for (let i = 0; i < spec.visuals.length; i++) {
+    const v = spec.visuals[i];
+    const icon = CHART_ICONS[v.chart_type] || '📊';
+    const canvasId = 'chart-' + i;
+
+    if (v.chart_type === 'card') {
+      // KPI card — no canvas, just big numbers
+      const mockVals = (v.measures || []).map(m => {
+        if (m.toLowerCase().includes('revenue') || m.toLowerCase().includes('amount') || m.toLowerCase().includes('sum'))
+          return { label: m, value: 'Rp ' + fmtNumber(Math.round(1200000 + Math.random() * 5000000)), delta: '+' + (5 + Math.random()*15).toFixed(1) + '%' };
+        if (m.toLowerCase().includes('count') || m.toLowerCase().includes('distinct'))
+          return { label: m, value: Math.round(20 + Math.random() * 40).toLocaleString(), delta: '+' + Math.round(2 + Math.random()*5) };
+        return { label: m, value: fmtNumber(Math.round(50000 + Math.random() * 500000)), delta: '+' + (1 + Math.random()*10).toFixed(1) + '%' };
+      });
+      html += `<div class="flex flex-col rounded-xl border border-gray-200 bg-gradient-to-br from-white to-blue-50 p-5 hover:shadow-lg transition-shadow">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="text-lg">${icon}</span>
+          <span class="text-sm font-semibold text-gray-700">${v.title}</span>
+        </div>
+        <div class="flex-1 flex flex-col justify-center gap-4">
+          ${mockVals.map(mv => `<div class="text-center">
+            <p class="text-3xl font-bold text-gray-900">${mv.value}</p>
+            <p class="text-xs text-gray-500 mt-1">${mv.label}</p>
+            <span class="inline-block mt-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">${mv.delta}</span>
+          </div>`).join('')}
+        </div>
+        <p class="text-[10px] text-gray-400 mt-3">Source: ${v.data_source}</p>
+      </div>`;
+    } else {
+      // Chart visual — canvas placeholder
+      html += `<div class="flex flex-col rounded-xl border border-gray-200 bg-white p-4 hover:shadow-lg transition-shadow">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">${icon}</span>
+            <span class="text-sm font-semibold text-gray-700">${v.title}</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">${v.chart_type}</span>
+        </div>
+        <div class="flex-1 min-h-[220px] relative">
+          <canvas id="${canvasId}"></canvas>
+        </div>
+        <p class="text-[10px] text-gray-400 mt-2">Source: <span class="text-blue-500">${v.data_source}</span>${v.measures?.length ? ' · ' + v.measures.join(', ') : ''}</p>
+      </div>`;
+    }
+  }
+  html += `</div>`;
+
+  // Footer
+  html += `<div class="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-6 py-3">
+    <span class="text-xs text-gray-400">📁 ${spec.data_sources.length} data source${spec.data_sources.length !== 1 ? 's' : ''}: ${spec.data_sources.join(', ')}</span>
+    <div class="flex gap-2">
+      ${spec.power_bi_url ? `<a href="${spec.power_bi_url}" target="_blank" class="bg-yellow-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-yellow-600 transition">⚡ Open in Power BI</a>` : ''}
+      <span class="text-[10px] text-gray-300">Generated by UDC AI</span>
+    </div>
+  </div>`;
+
+  html += `</div>`;
+  document.getElementById('dashboard-preview').innerHTML = html;
+
+  // Now create Chart.js instances for each canvas
+  requestAnimationFrame(() => {
+    spec.visuals.forEach((v, i) => {
+      if (v.chart_type === 'card') return;
+      const canvas = document.getElementById('chart-' + i);
+      if (!canvas) return;
+
+      const mock = mockDataForVisual(v);
+      const type = v.chart_type === 'scatter' ? 'scatter' : v.chart_type;
+
+      let config;
+      if (type === 'pie') {
+        config = {
+          type: 'doughnut',
+          data: {
+            labels: mock.labels,
+            datasets: [{ data: mock.data, backgroundColor: PALETTE, borderWidth: 2, borderColor: '#fff' }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+            }
+          }
+        };
+      } else if (type === 'line') {
+        config = {
+          type: 'line',
+          data: {
+            labels: mock.labels,
+            datasets: [{
+              label: (v.measures || ['Value'])[0],
+              data: mock.data,
+              borderColor: PALETTE[i % PALETTE.length],
+              backgroundColor: PALETTE_BG[i % PALETTE.length],
+              fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { beginAtZero: false, ticks: { callback: v => fmtNumber(v), font: { size: 10 } }, grid: { color: '#f3f4f6' } }, x: { ticks: { font: { size: 10 } }, grid: { display: false } } },
+            plugins: { legend: { display: false } }
+          }
+        };
+      } else if (type === 'table') {
+        // Render an HTML table instead
+        const tableHtml = `<div class="overflow-auto max-h-[200px] text-xs">
+          <table class="w-full"><thead class="bg-gray-50 sticky top-0"><tr>${mock.labels.map(l => `<th class="px-2 py-1 text-left font-medium text-gray-600">${l}</th>`).join('')}<th class="px-2 py-1 text-right font-medium text-gray-600">Value</th></tr></thead>
+          <tbody>${mock.labels.map((l,j) => `<tr class="border-t border-gray-100"><td class="px-2 py-1">${l}</td><td class="px-2 py-1 text-right font-mono">${fmtNumber(mock.data[j])}</td></tr>`).join('')}</tbody></table></div>`;
+        canvas.parentElement.innerHTML = tableHtml;
+        return;
+      } else {
+        // bar (default)
+        const horizontal = mock.labels.some(l => l.length > 10);
+        config = {
+          type: 'bar',
+          data: {
+            labels: mock.labels,
+            datasets: [{
+              label: (v.measures || ['Value'])[0],
+              data: mock.data,
+              backgroundColor: mock.labels.map((_, j) => PALETTE[j % PALETTE.length]),
+              borderRadius: 6, borderSkipped: false, barPercentage: 0.7
+            }]
+          },
+          options: {
+            indexAxis: horizontal ? 'y' : 'x',
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+              [horizontal ? 'x' : 'y']: { beginAtZero: true, ticks: { callback: v => fmtNumber(v), font: { size: 10 } }, grid: { color: '#f3f4f6' } },
+              [horizontal ? 'y' : 'x']: { ticks: { font: { size: 10 } }, grid: { display: false } }
+            },
+            plugins: { legend: { display: false } }
+          }
+        };
+      }
+
+      try {
+        chartInstances.push(new Chart(canvas, config));
+      } catch(e) { console.warn('Chart render error:', e); }
+    });
+  });
+}
+
+function renderHistory() {
+  if (!history.length) return;
+  let html = '<div class="space-y-2">';
+  for (const h of history) {
+    html += `<button onclick="renderDashboard(history.find(x=>x.id===${h.id}).spec)" class="w-full rounded-lg border border-gray-200 bg-white p-3 text-left hover:bg-blue-50 transition">
+      <p class="text-sm text-gray-800 line-clamp-2">${h.prompt}</p>
+      <div class="mt-1.5 flex items-center gap-2 text-xs text-gray-400">
+        <span>${h.role}</span><span>·</span><span>${new Date(h.timestamp).toLocaleTimeString()}</span>
+      </div>
+    </button>`;
+  }
+  html += '</div>';
+  document.getElementById('history-list').innerHTML = html;
+}
+
+// ── Data Catalog ──
+async function loadCatalog(query = '', source = '', page = 1) {
+  currentPage = page;
+  const params = new URLSearchParams({ page: page, page_size: 15 });
+  if (query) params.set('query', query);
+  if (source) params.set('source_type', source);
+
+  const res = await fetch(API + '/api/meta/assets?' + params);
+  const data = await res.json();
+
+  let html = `<table class="w-full text-sm">
+    <thead class="bg-gray-50 text-left text-xs text-gray-500">
+      <tr>
+        <th class="px-4 py-3 font-medium">Name</th>
+        <th class="px-4 py-3 font-medium">Source</th>
+        <th class="px-4 py-3 font-medium">Database</th>
+        <th class="px-4 py-3 font-medium">Quality</th>
+        <th class="px-4 py-3 font-medium">Rows</th>
+        <th class="px-4 py-3 font-medium">Tags</th>
+      </tr>
+    </thead><tbody class="divide-y divide-gray-100">`;
+
+  for (const a of data.items) {
+    const qc = a.quality_score >= 90 ? 'bg-green-100 text-green-800' :
+               a.quality_score >= 70 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+    const sc = a.source_type === 'PostgreSQL' ? 'bg-blue-100 text-blue-800' :
+               a.source_type === 'SAP' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800';
+
+    html += `<tr class="hover:bg-gray-50 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
+      <td class="px-4 py-3 font-medium text-gray-900">${a.name}</td>
+      <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs ${sc}">${a.source_type}</span></td>
+      <td class="px-4 py-3 text-gray-600">${a.database}</td>
+      <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${qc}">${a.quality_score}%</span></td>
+      <td class="px-4 py-3 text-gray-600">${(a.row_count || 0).toLocaleString()}</td>
+      <td class="px-4 py-3">${a.tags.map(t => `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded mr-1">${t}</span>`).join('')}</td>
+    </tr>
+    <tr class="hidden bg-gray-50">
+      <td colspan="6" class="px-6 py-3">
+        <p class="text-xs text-gray-500 mb-2">${a.description || 'No description'}</p>
+        <table class="w-full text-xs">
+          <thead><tr class="text-gray-500"><th class="pb-1 pr-4 text-left font-medium">Column</th><th class="pb-1 pr-4 text-left font-medium">Type</th><th class="pb-1 pr-4 text-left font-medium">Nullable</th><th class="pb-1 pr-4 text-left font-medium">Classification</th><th class="pb-1 text-left font-medium">PII</th></tr></thead>
+          <tbody>${a.columns.map(c => `<tr><td class="py-0.5 pr-4 font-mono text-gray-800">${c.name}</td><td class="py-0.5 pr-4 text-gray-600">${c.data_type}</td><td class="py-0.5 pr-4 text-gray-600">${c.nullable?'Yes':'No'}</td><td class="py-0.5 pr-4 text-gray-600">${c.classification||'—'}</td><td class="py-0.5">${c.pii_detected?'<span class="bg-red-100 text-red-700 px-1.5 py-0.5 rounded">PII</span>':'<span class="text-gray-400">—</span>'}</td></tr>`).join('')}</tbody>
+        </table>
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('catalog-table').innerHTML = html;
+
+  // Pagination
+  const totalPages = Math.ceil(data.total / 15);
+  document.getElementById('catalog-pagination').innerHTML = `
+    <span class="text-xs text-gray-500">${data.total} assets total</span>
+    <div class="flex gap-1">
+      ${page > 1 ? `<button onclick="loadCatalog('${query}','${source}',${page-1})" class="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100">← Prev</button>` : ''}
+      <span class="px-3 py-1 text-xs text-gray-500">Page ${page} of ${totalPages}</span>
+      ${page < totalPages ? `<button onclick="loadCatalog('${query}','${source}',${page+1})" class="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100">Next →</button>` : ''}
+    </div>`;
+}
+
+let searchTimer;
+function searchCatalog() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadCatalog(document.getElementById('catalog-search').value, currentFilter), 300);
+}
+
+function filterSource(source) {
+  currentFilter = source;
+  document.querySelectorAll('.source-filter').forEach(b => {
+    b.classList.toggle('bg-blue-600', b.dataset.source === source);
+    b.classList.toggle('text-white', b.dataset.source === source);
+    b.classList.toggle('active-filter', b.dataset.source === source);
+  });
+  loadCatalog(document.getElementById('catalog-search').value, source);
+}
+
+// ── Governance ──
+async function loadGovernance() {
+  const [stats, policies, audit, trust] = await Promise.all([
+    fetch(API + '/api/policy/stats').then(r => r.json()),
+    fetch(API + '/api/policy/policies').then(r => r.json()),
+    fetch(API + '/api/policy/audit').then(r => r.json()),
+    fetch(API + '/api/policy/trust-scores').then(r => r.json()),
+  ]);
+
+  // Stats cards
+  document.getElementById('gov-stats').innerHTML = `
+    <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm text-center">
+      <p class="text-3xl font-bold text-blue-600">${stats.total_evaluations}</p>
+      <p class="text-xs text-gray-500 mt-1">Total Evaluations</p>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm text-center">
+      <p class="text-3xl font-bold text-green-600">${stats.approval_rate}%</p>
+      <p class="text-xs text-gray-500 mt-1">Approval Rate</p>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm text-center">
+      <p class="text-3xl font-bold text-purple-600">${stats.avg_trust_score}</p>
+      <p class="text-xs text-gray-500 mt-1">Avg Trust Score</p>
+    </div>`;
+
+  // Store for tab switching
+  window._govData = { policies, audit, trust };
+  showGovTab('policies');
+}
+
+function showGovTab(tab) {
+  document.querySelectorAll('.gov-tab').forEach(b => {
+    b.classList.toggle('bg-blue-600', b.dataset.tab === tab);
+    b.classList.toggle('text-white', b.dataset.tab === tab);
+    b.classList.toggle('bg-gray-100', b.dataset.tab !== tab);
+    b.classList.toggle('text-gray-700', b.dataset.tab !== tab);
+  });
+
+  const d = window._govData;
+  if (!d) return;
+  const el = document.getElementById('gov-content');
+
+  if (tab === 'policies') {
+    el.innerHTML = `<table class="w-full text-sm">
+      <thead class="bg-gray-50 text-left text-xs text-gray-500">
+        <tr><th class="px-4 py-3">Policy</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">Effect</th><th class="px-4 py-3">Severity</th><th class="px-4 py-3">Description</th></tr>
+      </thead><tbody class="divide-y divide-gray-100">
+      ${d.policies.map(p => `<tr class="hover:bg-gray-50">
+        <td class="px-4 py-3 font-medium text-gray-900">${p.name}</td>
+        <td class="px-4 py-3 text-gray-600">${p.type}</td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${p.effect==='allow'?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}">${p.effect}</span></td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${p.severity==='critical'?'bg-red-100 text-red-800':p.severity==='high'?'bg-orange-100 text-orange-800':'bg-yellow-100 text-yellow-800'}">${p.severity}</span></td>
+        <td class="px-4 py-3 text-gray-500 text-xs max-w-xs">${p.description}</td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  } else if (tab === 'audit') {
+    el.innerHTML = `<table class="w-full text-sm">
+      <thead class="bg-gray-50 text-left text-xs text-gray-500">
+        <tr><th class="px-4 py-3">Time</th><th class="px-4 py-3">Actor</th><th class="px-4 py-3">Action</th><th class="px-4 py-3">Resource</th><th class="px-4 py-3">Decision</th></tr>
+      </thead><tbody class="divide-y divide-gray-100">
+      ${d.audit.items.map(e => `<tr class="hover:bg-gray-50">
+        <td class="px-4 py-3 text-gray-500 text-xs">${new Date(e.timestamp).toLocaleString()}</td>
+        <td class="px-4 py-3 text-gray-700">${e.actor}</td>
+        <td class="px-4 py-3 font-mono text-xs text-gray-600">${e.action}</td>
+        <td class="px-4 py-3 text-gray-600">${e.resource}</td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${e.decision==='allow'?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}">${e.decision}</span></td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  } else if (tab === 'trust') {
+    el.innerHTML = `<div class="p-4 space-y-4">
+      ${d.trust.map(t => `<div class="bg-gray-50 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <span class="font-medium text-gray-900">${t.entity_name}</span>
+            <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">${t.entity_type}</span>
+          </div>
+          <span class="text-2xl font-bold ${t.score>=800?'text-green-600':t.score>=500?'text-yellow-600':'text-red-600'}">${t.score}</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+          <div class="h-2 rounded-full ${t.score>=800?'bg-green-500':t.score>=500?'bg-yellow-500':'bg-red-500'}" style="width:${t.score/10}%"></div>
+        </div>
+        <div class="flex gap-4 text-xs text-gray-500">
+          ${t.factors.map(f => `<span>${f.name}: ${f.value}/${f.weight}</span>`).join('')}
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }
+}
+
+// ── Chat ──
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const msgs = document.getElementById('chat-messages');
+  msgs.innerHTML += `<div class="flex justify-end"><div class="bg-blue-600 text-white rounded-lg px-4 py-2 max-w-md text-sm">${msg}</div></div>`;
+
+  // Loading dots
+  msgs.innerHTML += `<div id="chat-loading" class="flex justify-start"><div class="bg-gray-100 rounded-lg px-4 py-2 text-sm text-gray-400">Thinking...</div></div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+
+  try {
+    const res = await fetch(API + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, session_id: 'demo' })
+    });
+    const data = await res.json();
+    document.getElementById('chat-loading')?.remove();
+
+    // Simple markdown rendering
+    const formatted = data.message
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n- /g, '<br>• ')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>')
+      .replace(/\|([^|]+)\|([^|]+)\|/g, '<span class="font-mono text-xs">$1 | $2</span>');
+
+    msgs.innerHTML += `<div class="flex justify-start"><div class="bg-gray-100 rounded-lg px-4 py-2 max-w-lg text-sm text-gray-700">${formatted}</div></div>`;
+  } catch (e) {
+    document.getElementById('chat-loading')?.remove();
+    msgs.innerHTML += `<div class="flex justify-start"><div class="bg-red-50 rounded-lg px-4 py-2 text-sm text-red-700">Error: ${e.message}</div></div>`;
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── Init ──
+loadCatalog();
+loadGovernance();
+</script>
+</body>
+</html>
